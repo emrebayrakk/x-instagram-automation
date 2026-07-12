@@ -1,6 +1,6 @@
 # X Otomasyon Paneli / X Automation Panel
 
-`@kaybedeceknevr` gibi **kendi** X (Twitter) hesabınız için tarayıcı tabanlı otomasyon aracı — otomatik beğeni, geri takip etmeyenleri takipten çıkarma ve başka bir kullanıcının listesinden filtreli takip etme. **API anahtarı gerekmez** (Playwright ile web arayüzünü sürer). Çok dilli arayüz (TR/EN/DE/ES/FR/IT). Hem **web** hem **masaüstü (Electron)** olarak çalışır.
+`@xxxxx` gibi **kendi** X (Twitter) hesabınız için tarayıcı tabanlı otomasyon aracı — otomatik beğeni, geri takip etmeyenleri takipten çıkarma ve başka bir kullanıcının listesinden filtreli takip etme. **API anahtarı gerekmez** (Playwright ile web arayüzünü sürer). Çok dilli arayüz (TR/EN/DE/ES/FR/IT). Hem **web** hem **masaüstü (Electron)** olarak çalışır.
 
 > A browser-based automation tool for **your own** X (Twitter) account — auto-like, unfollow non-followers, and follow filtered users from another account's list. **No API key required** (drives the web UI via Playwright). Multi-language UI (TR/EN/DE/ES/FR/IT). Runs as a **web** app or a **desktop (Electron)** app.
 
