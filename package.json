@@ -1,0 +1,21 @@
+{
+  "name": "x-otomasyon",
+  "version": "1.0.0",
+  "description": "X (Twitter) tarayici otomasyonu - otomatik begeni ve takipten cikma (Playwright)",
+  "type": "module",
+  "main": "electron-main.cjs",
+  "scripts": {
+    "start": "node server.js",
+    "desktop": "electron .",
+    "setup": "playwright install chromium"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "gender-detection-from-name": "^1.11.4",
+    "playwright": "^1.48.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "electron": "^43.1.0"
+  }
+}

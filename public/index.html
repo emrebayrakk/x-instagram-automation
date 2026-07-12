@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>X Otomasyon</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header>
+  <div class="brand"><span class="logo">X</span> <span data-i18n="appTitle">Otomasyon Paneli</span></div>
+  <div class="status">
+    <select id="g_language" class="lang-select" title="Language"></select>
+    <span id="loginBadge" class="badge off" data-i18n="badgeOut">Giriş yok</span>
+    <span id="userBadge" class="user"></span>
+  </div>
+</header>
+
+<div class="warn-bar" data-i18n="warnTos">
+  ⚠ Bu araç X'in kullanım koşullarına aykırı olabilir; kendi hesabınızda, kendi sorumluluğunuzda kullanın.
+</div>
+
+<main>
+  <!-- Bağlantı -->
+  <section class="card">
+    <h2 data-i18n="connTitle">1 · Bağlantı</h2>
+    <div class="row">
+      <button id="btnLogin" class="btn" data-i18n="btnLogin">Tarayıcıyı Aç / Giriş</button>
+      <button id="btnRefresh" class="btn ghost" data-i18n="btnRefresh">Durumu Yenile</button>
+      <button id="btnClose" class="btn danger ghost" data-i18n="btnClose">Tarayıcıyı Kapat</button>
+    </div>
+    <p class="hint" data-i18n="connHint">Açılan tarayıcıda hesabınıza giriş yapın, sonra "Durumu Yenile"ye basın.</p>
+  </section>
+
+  <!-- Genel Ayarlar -->
+  <section class="card">
+    <h2 data-i18n="generalTitle">Genel Ayarlar</h2>
+    <div class="grid">
+      <label><span data-i18n="lblUsername">Kullanıcı adı (@'siz)</span>
+        <input id="g_username" type="text" placeholder="kaybedeceknevr" />
+      </label>
+      <label class="chk"><input id="g_headless" type="checkbox" /> <span data-i18n="lblHeadless">Tarayıcıyı gizli çalıştır</span></label>
+      <label><span data-i18n="lblDailyLike">Günlük beğeni tavanı</span>
+        <input id="g_dailyLikeCap" type="number" min="0" />
+      </label>
+      <label><span data-i18n="lblDailyUnfollow">Günlük takipten çıkma tavanı</span>
+        <input id="g_dailyUnfollowCap" type="number" min="0" />
+      </label>
+      <label><span data-i18n="lblDailyFollow">Günlük takip etme tavanı</span>
+        <input id="g_dailyFollowCap" type="number" min="0" />
+      </label>
+    </div>
+  </section>
+
+  <div class="two-col">
+    <!-- Beğeni -->
+    <section class="card">
+      <h2 data-i18n="likeTitle">❤ Otomatik Beğeni</h2>
+      <div class="grid">
+        <label><span data-i18n="lblFeed">Akış</span>
+          <select id="l_feed">
+            <option value="following" data-i18n="optFollowing">Takip edilenler</option>
+            <option value="foryou" data-i18n="optForyou">Sana özel</option>
+          </select>
+        </label>
+        <label><span data-i18n="lblMax">Bu oturumda en fazla</span>
+          <input id="l_maxPerSession" type="number" min="1" />
+        </label>
+        <label><span data-i18n="lblMinDelay">En az bekleme (ms)</span>
+          <input id="l_minDelayMs" type="number" min="0" />
+        </label>
+        <label><span data-i18n="lblMaxDelay">En fazla bekleme (ms)</span>
+          <input id="l_maxDelayMs" type="number" min="0" />
+        </label>
+      </div>
+      <div class="checks">
+        <label class="chk"><input id="l_skipRetweets" type="checkbox" /> <span data-i18n="chkSkipRT">RT / yeniden gönderilenleri geç</span></label>
+        <label class="chk"><input id="l_skipReplies" type="checkbox" /> <span data-i18n="chkSkipReplies">Yanıtları geç</span></label>
+        <label class="chk"><input id="l_skipPromoted" type="checkbox" /> <span data-i18n="chkSkipPromoted">Reklamları geç</span></label>
+      </div>
+      <div class="row">
+        <button id="btnLikeStart" class="btn go" data-i18n="btnStart">Başlat</button>
+        <button id="btnLikeStop" class="btn danger" disabled data-i18n="btnStop">Durdur</button>
+      </div>
+      <div class="counters">
+        <span><span data-i18n="cntLiked">Beğenildi:</span> <b id="c_liked">0</b></span>
+        <span><span data-i18n="cntSkipped">Atlandı:</span> <b id="c_likeSkipped">0</b></span>
+      </div>
+    </section>
+
+    <!-- Takipten çıkma -->
+    <section class="card">
+      <h2 data-i18n="unfollowTitle">✕ Otomatik Takipten Çıkma</h2>
+      <div class="grid">
+        <label><span data-i18n="lblMax">Bu oturumda en fazla</span>
+          <input id="u_maxPerSession" type="number" min="1" />
+        </label>
+        <label><span data-i18n="lblMinDelay">En az bekleme (ms)</span>
+          <input id="u_minDelayMs" type="number" min="0" />
+        </label>
+        <label><span data-i18n="lblMaxDelay">En fazla bekleme (ms)</span>
+          <input id="u_maxDelayMs" type="number" min="0" />
+        </label>
+      </div>
+      <div class="checks">
+        <label class="chk"><input id="u_onlyNonFollowers" type="checkbox" /> <span data-i18n="chkOnlyNon">Sadece seni geri takip etmeyenleri çıkar</span></label>
+      </div>
+      <label><span data-i18n="lblWhitelist">Whitelist — asla çıkma (virgülle ayır, @'siz)</span>
+        <input id="u_whitelist" type="text" placeholder="ornek1, ornek2" />
+      </label>
+      <div class="row">
+        <button id="btnUnfollowStart" class="btn go" data-i18n="btnStart">Başlat</button>
+        <button id="btnUnfollowStop" class="btn danger" disabled data-i18n="btnStop">Durdur</button>
+      </div>
+      <div class="counters">
+        <span><span data-i18n="cntUnfollowed">Çıkıldı:</span> <b id="c_unfollowed">0</b></span>
+        <span><span data-i18n="cntSkipped">Atlandı:</span> <b id="c_unfollowSkipped">0</b></span>
+      </div>
+    </section>
+  </div>
+
+  <!-- Takip etme -->
+  <section class="card">
+    <h2 data-i18n="followTitle">➕ Otomatik Takip Etme (başka kullanıcının listesinden)</h2>
+    <div class="grid">
+      <label><span data-i18n="lblSourceUser">Hedef kullanıcı (@'siz) — kimin listesi?</span>
+        <input id="f_sourceUser" type="text" placeholder="ornekhesap" />
+      </label>
+      <label><span data-i18n="lblSourceList">Liste</span>
+        <select id="f_sourceList">
+          <option value="followers" data-i18n="optFollowers">Takipçileri</option>
+          <option value="following" data-i18n="optFollowingList">Takip ettikleri</option>
+        </select>
+      </label>
+      <label><span data-i18n="lblMax">Bu oturumda en fazla</span>
+        <input id="f_maxPerSession" type="number" min="1" />
+      </label>
+      <label><span data-i18n="lblGender">Cinsiyet (isimden tahmin)</span>
+        <select id="f_gender">
+          <option value="all" data-i18n="optGenderAll">Hepsi</option>
+          <option value="female" data-i18n="optGenderFemale">Tahmini kadın</option>
+          <option value="male" data-i18n="optGenderMale">Tahmini erkek</option>
+        </select>
+      </label>
+      <label><span data-i18n="lblMinDelay">En az bekleme (ms)</span>
+        <input id="f_minDelayMs" type="number" min="0" />
+      </label>
+      <label><span data-i18n="lblMaxDelay">En fazla bekleme (ms)</span>
+        <input id="f_maxDelayMs" type="number" min="0" />
+      </label>
+      <label><span data-i18n="lblMinBio">Bio en az karakter</span>
+        <input id="f_minBioLength" type="number" min="0" />
+      </label>
+    </div>
+    <div class="checks">
+      <label class="chk"><input id="f_requireBio" type="checkbox" /> <span data-i18n="chkRequireBio">Sadece biosu dolu olanları takip et</span></label>
+      <label class="chk"><input id="f_skipVerified" type="checkbox" /> <span data-i18n="chkSkipVerified">Onaylanmışları (mavi tik) takip etme</span></label>
+      <label class="chk"><input id="f_skipFollowsYou" type="checkbox" /> <span data-i18n="chkSkipFollowsYou">Seni zaten takip edenleri atla</span></label>
+    </div>
+    <div class="grid">
+      <label><span data-i18n="lblBioInclude">Bio şu kelimelerden birini içersin (virgülle)</span>
+        <input id="f_bioInclude" type="text" />
+      </label>
+      <label><span data-i18n="lblBioExclude">Bio şu kelimeleri içeriyorsa atla (virgülle)</span>
+        <input id="f_bioExclude" type="text" />
+      </label>
+    </div>
+    <p class="hint" data-i18n="followHint">⚠ Cinsiyet tahmini isim/bio'ya dayalı kabadır, yanılabilir.</p>
+    <div class="row">
+      <button id="btnFollowStart" class="btn go" data-i18n="btnStart">Başlat</button>
+      <button id="btnFollowStop" class="btn danger" disabled data-i18n="btnStop">Durdur</button>
+    </div>
+    <div class="counters">
+      <span><span data-i18n="cntFollowed">Takip edildi:</span> <b id="c_followed">0</b></span>
+      <span><span data-i18n="cntSkipped">Atlandı:</span> <b id="c_followSkipped">0</b></span>
+    </div>
+  </section>
+
+  <!-- Log -->
+  <section class="card">
+    <div class="log-head">
+      <h2 data-i18n="logTitle">Canlı İşlem Kaydı</h2>
+      <button id="btnClearLog" class="btn ghost small" data-i18n="btnClear">Temizle</button>
+    </div>
+    <div id="log" class="log"></div>
+  </section>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
