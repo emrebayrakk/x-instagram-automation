@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "desktop": "electron .",
+    "dist": "electron-builder --win",
     "setup": "playwright install chromium"
   },
   "dependencies": {
@@ -16,6 +17,29 @@
     "ws": "^8.18.0"
   },
   "devDependencies": {
-    "electron": "^43.1.0"
+    "electron": "^43.1.0",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.emrebayrak.xotomasyon",
+    "productName": "X Otomasyon",
+    "directories": { "output": "release" },
+    "files": [
+      "**/*",
+      "!user-data/**",
+      "!settings.json",
+      "!daily-stats.json",
+      "!docs/**",
+      "!release/**",
+      "!_shot.mjs"
+    ],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "X-Otomasyon-Setup-${version}.${ext}"
+    }
   }
 }

@@ -1,98 +1,116 @@
-# X Otomasyon Paneli / X Automation Panel
+<div align="center">
 
-`@xxxxx` gibi **kendi** X (Twitter) hesabınız için tarayıcı tabanlı otomasyon aracı — otomatik beğeni, geri takip etmeyenleri takipten çıkarma ve başka bir kullanıcının listesinden filtreli takip etme. **API anahtarı gerekmez** (Playwright ile web arayüzünü sürer). Çok dilli arayüz (TR/EN/DE/ES/FR/IT). Hem **web** hem **masaüstü (Electron)** olarak çalışır.
+# ❌ X Otomasyon Paneli · X Automation Panel
 
-> A browser-based automation tool for **your own** X (Twitter) account — auto-like, unfollow non-followers, and follow filtered users from another account's list. **No API key required** (drives the web UI via Playwright). Multi-language UI (TR/EN/DE/ES/FR/IT). Runs as a **web** app or a **desktop (Electron)** app.
+**Kendi X (Twitter) hesabınız için tarayıcı tabanlı otomasyon** — otomatik beğeni, geri takip etmeyenleri çıkarma ve filtreli takip etme.
+_Browser-based automation for **your own** X (Twitter) account — auto-like, unfollow non-followers, and filtered follow._
+
+![Node](https://img.shields.io/badge/Node.js-18%2B-3fb950)
+![Playwright](https://img.shields.io/badge/Playwright-Automation-2d9bf0)
+![Electron](https://img.shields.io/badge/Electron-Desktop-9b59b6)
+![i18n](https://img.shields.io/badge/Dil%2FLang-TR·EN·DE·ES·FR·IT-f4c542)
+![No API Key](https://img.shields.io/badge/API%20Key-gerekmez%20/%20not%20required-e74c3c)
+
+</div>
 
 ---
 
-## ⚠ Uyarı / Warning
+<div align="center">
 
-**TR:** Otomatik beğeni ve toplu takip/takipten-çıkma, **X'in Kullanım Koşulları / Automation Rules kurallarına aykırıdır** ve kendi hesabınızda bile **askıya alınma riski** taşır. Kullanım tamamen sizin sorumluluğunuzdadır. Düşük limitler ve geniş, rastgele `ms` aralıkları önerilir (varsayılanlar temkinlidir). Cinsiyet tahmini isimden yapılır, **kesin değildir**.
+### 🇹🇷 Türkçe arayüz &nbsp;·&nbsp; 🇬🇧 English UI
 
-**EN:** Auto-liking and bulk follow/unfollow **violate X's Terms of Service / Automation Rules** and can get your account **suspended**, even on your own account. Use entirely at your own risk. Low limits and wide, randomized `ms` intervals are recommended (defaults are conservative). Gender is guessed from the name and is **not accurate**.
+<img src="docs/panel-tr.png" width="49%" alt="Türkçe panel" />
+<img src="docs/panel-en.png" width="49%" alt="English panel" />
+
+</div>
 
 ---
 
-## Kurulum / Installation
+## ✨ Özellikler / Features
 
-**TR — Gereksinim:** [Node.js](https://nodejs.org) 18+ kurulu olmalı.
-**EN — Requirement:** [Node.js](https://nodejs.org) 18+ must be installed.
+| | TR | EN |
+|---|---|---|
+| ❤️ | **Otomatik beğeni** — akış filtreleri (RT/yanıt/reklam), ms aralık, oturum + günlük limit | **Auto-like** — feed filters (retweets/replies/ads), ms interval, session + daily cap |
+| ✂️ | **Takipten çıkma** — seni geri takip etmeyenleri çıkar, whitelist, limitler | **Unfollow** — unfollow those who don't follow you back, whitelist, limits |
+| ➕ | **Takip etme** — hedef hesabın listesinden filtreli takip (biosu dolu, mavi tik hariç, cinsiyet, kelime) | **Follow** — follow from a target's list with filters (has-bio, exclude verified, gender, keywords) |
+| 🌍 | **6 dil** — arayüz, loglar ve cinsiyet tahmini seçilen dile göre | **6 languages** — UI, logs and gender guessing follow the selected language |
+| 🖥️ | **Masaüstü + Web** — Electron penceresi veya tarayıcı | **Desktop + Web** — Electron window or browser |
+| 🔑 | **API anahtarı gerekmez** — Playwright ile web arayüzünü sürer | **No API key** — drives the web UI via Playwright |
+
+---
+
+## ⚠️ Uyarı / Warning
+
+**TR:** Otomatik beğeni ve toplu takip/takipten-çıkma, **X'in Kullanım Koşulları / Automation Rules kurallarına aykırıdır** ve kendi hesabınızda bile **askıya alınma riski** taşır. Kullanım tamamen sizin sorumluluğunuzdadır. Düşük limitler ve geniş, rastgele `ms` aralıkları önerilir. Cinsiyet tahmini isimden yapılır, **kesin değildir**.
+
+**EN:** Auto-liking and bulk follow/unfollow **violate X's Terms of Service / Automation Rules** and can get your account **suspended**, even your own. Use entirely at your own risk. Low limits and wide, randomized `ms` intervals are recommended. Gender is guessed from the name and is **not accurate**.
+
+---
+
+## ⬇️ Hazır Kurulum / Ready-made Installer (Windows)
+
+**TR:** Derlemekle uğraşmadan doğrudan kurmak için: **[X-Otomasyon-Setup-1.0.0.exe](release/X-Otomasyon-Setup-1.0.0.exe)** dosyasını indirip çalıştırın.
+Windows SmartScreen uyarı verirse: **Ek bilgi → Yine de çalıştır**. (Uygulama imzasız olduğu için normaldir.)
+
+**EN:** To install without building anything: download and run **[X-Otomasyon-Setup-1.0.0.exe](release/X-Otomasyon-Setup-1.0.0.exe)**.
+If Windows SmartScreen warns: **More info → Run anyway**. (Normal, the app is unsigned.)
+
+> **Not / Note:** Otomasyon için Playwright'ın Chromium'una ihtiyaç vardır; kaynaktan çalıştırıyorsanız `npx playwright install chromium` komutunu bir kez çalıştırın. / Automation needs Playwright's Chromium; if running from source, run `npx playwright install chromium` once.
+
+---
+
+## 🛠️ Kaynaktan Kurulum / Install from Source
+
+**Gereksinim / Requirement:** [Node.js](https://nodejs.org) 18+
 
 ```bash
 cd x-otomasyon
-npm install                    # bağımlılıklar / dependencies
+npm install
 npx playwright install chromium   # otomasyon tarayıcısı / automation browser (bir kez / once)
 ```
 
----
-
-## Çalıştırma / Running
-
-Uygulamayı iki şekilde çalıştırabilirsiniz. / You can run it two ways.
-
-### 1) Masaüstü uygulaması / Desktop app (Electron)
+### Çalıştırma / Running
 
 ```bash
-npm run desktop
+npm run desktop     # 🖥️ Masaüstü uygulaması / Desktop app (Electron)
+npm start           # 🌐 Web modu / Web mode -> http://localhost:4477
 ```
 
-**TR:** Pano ayrı bir masaüstü penceresinde açılır. (İlk çalıştırmada Electron ikilisi indirilebilir.)
-**EN:** The panel opens in a dedicated desktop window. (On first run, the Electron binary may download.)
+> Port: `PORT=5000 npm start`
 
-### 2) Web uygulaması / Web app
+### Kendi .exe'nizi üretme / Build your own .exe
 
 ```bash
-npm start
+npm run dist        # release/ klasörüne kurulum .exe'si üretir / builds an installer into release/
 ```
-
-**TR:** Sonra tarayıcıda **http://localhost:4477** adresini açın.
-**EN:** Then open **http://localhost:4477** in your browser.
-
-> Port değiştirmek için / To change the port: `PORT=5000 npm start` (veya / or `PORT=5000 npm run desktop`).
 
 ---
 
-## Kullanım / Usage
+## 🚀 Kullanım / Usage
 
 **TR:**
-1. **Sağ üstten dili seçin** (TR/EN/DE/ES/FR/IT). Arayüz ve loglar anında değişir; cinsiyet tahmini de bu dile göre yapılır.
-2. **"Tarayıcıyı Aç / Giriş"** → açılan Chromium'da hesabınıza giriş yapın (2FA/şifre elle). Oturum kaydedilir; her sefer giriş gerekmez.
+1. **Sağ üstten dili seçin** (TR/EN/DE/ES/FR/IT) — arayüz, loglar ve cinsiyet tahmini o dile geçer.
+2. **"Tarayıcıyı Aç / Giriş"** → açılan Chromium'da hesabınıza giriş yapın (2FA/şifre elle). Oturum kaydedilir.
 3. **"Durumu Yenile"** → giriş doğrulanır, kullanıcı adınız otomatik dolar.
-4. İstediğiniz modülün ayarlarını yapıp **Başlat**'a basın; işlemleri **Canlı İşlem Kaydı**'ndan izleyin. İstediğiniz an **Durdur**.
+4. Bir modülün ayarlarını yapıp **Başlat**'a basın; işlemleri **Canlı İşlem Kaydı**'ndan izleyin. İstediğiniz an **Durdur**.
 
 **EN:**
-1. **Pick a language** (top-right: TR/EN/DE/ES/FR/IT). The UI and logs switch instantly; gender guessing uses this language too.
-2. **"Open Browser / Sign In"** → sign in to your account in the opened Chromium (handle 2FA/password manually). The session is saved; no need to sign in every time.
+1. **Pick a language** (top-right: TR/EN/DE/ES/FR/IT) — UI, logs and gender guessing switch to it.
+2. **"Open Browser / Sign In"** → sign in to your account in the opened Chromium (2FA/password manually). The session is saved.
 3. **"Refresh Status"** → sign-in is verified and your username is auto-filled.
 4. Configure a module and click **Start**; watch the **Live Activity Log**. **Stop** anytime.
 
-### Modüller / Modules
-
-- **❤ Otomatik Beğeni / Auto Like** — akış filtreleri (RT/yanıt/reklam), ms aralık, oturum + günlük limit. / feed filters (retweets/replies/ads), ms interval, session + daily cap.
-- **✕ Takipten Çıkma / Unfollow** — geri takip etmeyenleri çıkarır, whitelist, limitler. / unfollows non-followers, whitelist, limits.
-- **➕ Takip Etme / Follow** — hedef kullanıcının takipçi/takip listesinden filtreli takip: biosu dolu olanlar, mavi tik hariç, cinsiyet tahmini, bio kelime içerir/hariç, ms aralık, limitler. / follow from a target's followers/following list with filters: has-bio, exclude verified, gender guess, bio keyword include/exclude, ms interval, limits.
-
 ---
 
-## Notlar / Notes
-
-- **TR:** Giriş oturumu `user-data/` klasöründe saklanır (git'e dahil değil). Çıkış için klasörü silin. Ayarlar `settings.json`, günlük sayaçlar `daily-stats.json` dosyasında tutulur.
-- **EN:** The login session is stored in `user-data/` (not in git). Delete it to sign out. Settings live in `settings.json`, daily counters in `daily-stats.json`.
-- **TR:** Masaüstü modunda pencereyi kapatmak sunucuyu da kapatır. Web modunda durdurmak için terminalde `Ctrl+C`.
-- **EN:** In desktop mode, closing the window also stops the server. In web mode, press `Ctrl+C` in the terminal to stop.
-
----
-
-## Proje Yapısı / Project Structure
+## 📁 Proje Yapısı / Project Structure
 
 ```
 x-otomasyon/
   electron-main.cjs   Masaüstü sarmalayıcı / desktop wrapper (Electron)
   server.js           Express + WebSocket sunucu / server
   src/
-    state.js          Ayarlar, olay yayını, sayaçlar, dil / settings, events, counters, language
-    locales.js        Çeviriler (6 dil) / translations (6 languages)
+    state.js          Ayarlar, olaylar, sayaçlar, dil / settings, events, counters, language
+    locales.js        Çeviriler — 6 dil / translations — 6 languages
     browser.js        Playwright kalıcı tarayıcı + giriş / persistent browser + login
     liker.js          Otomatik beğeni / auto like
     unfollower.js     Takipten çıkma / unfollow
@@ -100,16 +118,11 @@ x-otomasyon/
     names.js          İsimden cinsiyet tahmini / gender guess (gender-detection-from-name)
     utils.js          Rastgele/iptal edilebilir bekleme / delays
   public/             Pano arayüzü / dashboard UI (index.html, app.js, style.css)
+  docs/               Ekran görüntüleri / screenshots
 ```
 
 ---
 
-## (İsteğe bağlı) Tek dosya .exe / (Optional) Standalone .exe
-
-**TR:** Kurulmuş bir masaüstü uygulaması (.exe) üretmek isterseniz `electron-builder` kullanabilirsiniz:
-**EN:** To produce an installable desktop app (.exe), you can use `electron-builder`:
-
-```bash
-npm install --save-dev electron-builder
-npx electron-builder --win
-```
+<div align="center">
+<sub>Playwright · Express · WebSocket · Electron · gender-detection-from-name</sub>
+</div>

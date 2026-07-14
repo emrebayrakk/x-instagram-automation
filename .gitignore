@@ -2,3 +2,8 @@ node_modules/
 user-data/
 settings.json
 daily-stats.json
+
+# Build çıktısı: sadece kurulum .exe'si repoya dahil edilsin,
+# ~250MB'lık win-unpacked/ ve yardımcı dosyalar hariç tutulsun.
+release/*
+!release/X-Otomasyon-Setup-1.0.0.exe
