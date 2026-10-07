@@ -8,7 +8,8 @@
     "start": "node server.js",
     "desktop": "electron .",
     "dist": "electron-builder --win",
-    "setup": "playwright install chromium"
+    "setup": "playwright install chromium",
+    "ext:names": "node extension/scripts/build-names.cjs"
   },
   "dependencies": {
     "express": "^4.19.2",
@@ -30,6 +31,7 @@
       "!settings.json",
       "!daily-stats.json",
       "!docs/**",
+      "!extension/**",
       "!release/**",
       "!_shot.mjs"
     ],
