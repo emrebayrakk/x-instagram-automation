@@ -126,8 +126,47 @@
     await pause(randInt(450, 1000));
   }
 
-  function scrollDown(min, max) {
-    window.scrollBy(0, randInt(min, max));
+  // Sekme gizliyken sayfanın kendi dünyasındaki x-awake.js'i dürt: X kaydırmayı görsün, listeyi uzatsın.
+  let hiddenNoted = false;
+  XO.setTick(() => {
+    document.dispatchEvent(new CustomEvent('xo-pump'));
+    if (!hiddenNoted && XO.busy()) { hiddenNoted = true; XO.log('x', 'info', 'tabHidden'); }
+  });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) hiddenNoted = false; });
+
+  const RE_RETRY = /^(retry|try again|tekrar dene|yeniden dene|erneut versuchen|wiederholen|reintentar|réessayer|riprova)$/i;
+
+  // "Bir şeyler ters gitti" kutusundaki yeniden dene düğmesi.
+  function clickRetry() {
+    for (const b of document.querySelectorAll(`${SEL.primary} button, ${SEL.primary} [role="button"]`)) {
+      if (RE_RETRY.test((b.textContent || '').trim())) { b.click(); return true; }
+    }
+    return false;
+  }
+
+  const lastOf = (sel) => {
+    const all = document.querySelectorAll(sel);
+    return all.length ? all[all.length - 1] : null;
+  };
+
+  // Aşağı kaydır ve X'in yeni öğe göstermesini bekle. Liste sonundaysak biraz yukarı çıkıp tekrar
+  // en alta iner (X'in yükleyicisini yeniden tetikler); hata kutusu çıktıysa yeniden dener.
+  // Sekme görünürken de gizliyken de çalışır (gizliyken pause() her adımda sayfayı dürter).
+  async function loadMore(ctl, sel) {
+    const el = document.scrollingElement || document.documentElement;
+    const before = { h: el.scrollHeight, last: lastOf(sel) };
+    const changed = () => el.scrollHeight !== before.h || lastOf(sel) !== before.last;
+    const y = window.scrollY;
+    window.scrollBy(0, randInt(700, 1100));
+    if (window.scrollY - y < 80) {
+      window.scrollBy(0, -randInt(300, 500));
+      await pause(350);
+      window.scrollTo(0, el.scrollHeight);
+    }
+    if (await waitFor(changed, 6000, ctl)) { await pause(randInt(300, 700)); return true; }
+    if (!ctl.running) return false;
+    if (clickRetry()) return !!(await waitFor(changed, 8000, ctl));
+    return false;
   }
 
   const searchQuery = () => new URLSearchParams(location.search).get('q') || '';
@@ -283,9 +322,8 @@
       if (tgt.sorted && oldStreak >= 10) { ctx.log('warn', 'likeEnd'); break; }
       if (!target) {
         idle = fresh ? 0 : idle + 1;
-        if (idle >= 8) { ctx.log('warn', 'likeEnd'); break; }
-        scrollDown(900, 1300);
-        await pause(1700);
+        if (idle >= 5) { ctx.log('warn', 'likeEnd'); break; }
+        await loadMore(ctl, SEL.tweet);
         continue;
       }
 
@@ -452,9 +490,8 @@
 
       if (!cell) {
         idle = fresh ? 0 : idle + 1;
-        if (idle >= 12) { ctx.log('warn', 'listEnd'); break; }
-        scrollDown(800, 1000);
-        await pause(1600);
+        if (idle >= 5) { ctx.log('warn', 'listEnd'); break; }
+        await loadMore(ctl, SEL.cell);
         continue;
       }
 
@@ -631,9 +668,8 @@
 
       if (!cell) {
         idle = fresh ? 0 : idle + 1;
-        if (idle >= 12) { ctx.log('warn', 'listEnd'); break; }
-        scrollDown(800, 1000);
-        await pause(1600);
+        if (idle >= 5) { ctx.log('warn', 'listEnd'); break; }
+        await loadMore(ctl, SEL.cell);
         continue;
       }
 
@@ -724,9 +760,8 @@
 
       if (!target) {
         idle = fresh ? 0 : idle + 1;
-        if (idle >= 8) { ctx.log('warn', 'listEnd'); break; }
-        scrollDown(900, 1300);
-        await pause(1700);
+        if (idle >= 5) { ctx.log('warn', 'listEnd'); break; }
+        await loadMore(ctl, SEL.tweet);
         continue;
       }
 
@@ -767,12 +802,4 @@
     }
   });
 
-  // Arka plandaki sekmede X yeni içerik yüklemeyebilir: görev sürerken bir kez uyar.
-  let warnedAt = 0;
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden && XO.busy() && Date.now() - warnedAt > 120000) {
-      warnedAt = Date.now();
-      XO.log('x', 'warn', 'tabHidden');
-    }
-  });
 })();

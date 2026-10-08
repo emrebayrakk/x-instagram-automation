@@ -545,6 +545,16 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   }).then(() => { for (const [id, rec] of ended) queueOnTaskEnd(id, 'stopped', rec); });
 });
 
+// Görev süren sekmeyi Chrome'un bellek tasarrufu arka planda atmasın (sekme boşaltılırsa görev kesilir).
+const runningTabs = (tasks) => new Set(Object.values(tasks || {}).filter((r) => r && r.running && r.tabId != null).map((r) => r.tabId));
+chrome.storage.onChanged.addListener((ch, area) => {
+  if (area !== 'local' || !ch.tasks) return;
+  const before = runningTabs(ch.tasks.oldValue);
+  const now = runningTabs(ch.tasks.newValue);
+  for (const id of now) if (!before.has(id)) chrome.tabs.update(id, { autoDiscardable: false }).catch(() => {});
+  for (const id of before) if (!now.has(id)) chrome.tabs.update(id, { autoDiscardable: true }).catch(() => {});
+});
+
 // Kurulum, güncelleme ya da tarayıcı açılışı: yarım kalan görevler ve sıra artık sahipsizdir.
 async function init(reason) {
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});

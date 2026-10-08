@@ -122,7 +122,7 @@ Adımları sırayla çalıştırır. Örnek:
 
 **İpuçları**
 
-- X görevleri açık sekmede çalışır; görev sürerken **X sekmesini görünür tut** (ayrı bir pencerede olabilir). Arka plandaki sekmede X yeni içerik yüklemeyebilir.
+- X görevleri X sekmesinde çalışır. Görev başladıktan sonra **başka sekmeye geçebilirsin**: eklenti X sekmesini arka planda da kaydırıp yeni içerik yükletir ve sekmenin Chrome tarafından boşaltılmasını engeller. Yalnızca X sekmesini kapatma.
 - Aynı platformda aynı anda tek görev çalışır; görevin sekmesi kapanırsa görev durur.
 - X art arda 3 işlemi uygulamazsa (büyük olasılıkla hız sınırı) görev kendini durdurur.
 - Başlangıç için öneri: takipte günde 50–100, işlemler arası 10–30 sn.
@@ -240,7 +240,7 @@ Runs steps in order, for example:
 
 **Tips**
 
-- X tasks run in the open tab; **keep the X tab visible** while a task runs (a separate window is fine). X may not load new content in a background tab.
+- X tasks run in the X tab. Once a task starts **you can switch to another tab**: the extension keeps scrolling the X tab and loading new content in the background, and stops Chrome from discarding the tab. Just don't close the X tab.
 - One task per platform at a time; closing the task's tab stops it.
 - If X rejects 3 actions in a row (most likely a rate limit), the task stops itself.
 - A sensible start: 50–100 follows a day, 10–30 s between actions.
@@ -268,6 +268,8 @@ extension/                 Chrome eklentisi (Manifest V3) / Chrome extension
                            messaging, cancellable waits, task lifecycle
     x-hook.js              X'in kendi API yanıtlarından profil verisi (ek istek yok)
                            profile data from X's own API responses (no extra requests)
+    x-awake.js             Arka plandaki sekmede X'in kaydırma/yükleme döngüsünü sürdürür
+                           keeps X scrolling and loading while the tab is in the background
     x.js                   X: beğeni, takip, takipten çıkma, temizlik / like, follow, unfollow, cleanup
     instagram.js           Instagram: tarama, filtreli takip, takipten çıkma / scan, filtered follow, unfollow
   sidepanel/               Yan panel arayüzü / side panel UI

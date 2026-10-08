@@ -45,7 +45,19 @@
     return Math.floor(min + Math.random() * (max - min + 1));
   }
 
-  const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  // Her beklemede çağrılır; sekme gizliyken sayfayı dürtmek için (x.js ayarlar).
+  let tick = () => {};
+
+  // Arka plandaki sekmede sayfa zamanlayıcıları kısılır (bir süre sonra dakikada bire kadar);
+  // sekme gizliyken kısa beklemeler de arka planda tutulur.
+  async function pause(ms) {
+    if (!document.hidden) return sleep(ms);
+    try { tick(); } catch { /* yok say */ }
+    const r = await send({ type: 'timer', ms });
+    if (!r) await sleep(ms);
+  }
 
   // Uzun bekleme: süre arka planda tutulur (arka plandaki sekmelerde sayfa zamanlayıcıları
   // dakikada bire kadar kısılabilir). Görev durdurulunca hemen döner.
@@ -61,8 +73,9 @@
           const left = end - Date.now();
           if (left <= 0) break;
           const chunk = Math.min(20000, left);
+          if (document.hidden) { try { tick(); } catch { /* yok say */ } }
           const r = await send({ type: 'timer', ms: chunk });
-          if (!r) await pause(chunk);
+          if (!r) await sleep(chunk);
         }
         finish();
       })();
@@ -220,6 +233,7 @@
   g.XO = {
     alive, send, boot, wait, pause, waitFor, randInt, errText,
     register(id, fn) { handlers[id] = fn; },
+    setTick(fn) { tick = typeof fn === 'function' ? fn : () => {}; },
     busy: () => running.size > 0,
     log: (src, lvl, key, p) => send({ type: 'log', src, lvl, key, p })
   };
