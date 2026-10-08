@@ -61,14 +61,19 @@
     }
   }
 
+  // Instagram'ın varsayılan (boş) profil fotoğrafı dosyası.
+  const DEFAULT_PIC = /44884218_345707102882519_2446069589734326272_n/;
   const normUser = (r) => ({
     id: String(r.pk || r.id || r.pk_id || ''),
     username: String(r.username || ''),
     name: String(r.full_name || ''),
     pic: String(r.profile_pic_url || ''),
     verified: !!r.is_verified,
-    private: !!r.is_private
+    private: !!r.is_private,
+    noPhoto: r.has_anonymous_profile_picture === true || DEFAULT_PIC.test(String(r.profile_pic_url || ''))
   });
+
+  const igHistoryOps = (ops) => (ops.length ? send({ type: 'igHistory', ops }) : null);
 
   function listUrl(viewerId, kind, cursor, count) {
     const n = Math.min(200, Math.max(1, Math.round(Number(count) || 50)));
@@ -205,6 +210,10 @@
       igData: { viewerId, username, scannedAt: Date.now(), following: cp.following, followers: cp.followers }
     });
     await chrome.storage.local.remove('igCp');
+    // Eklentinin takip ettiği ve artık takipçi listesinde görünen hesapları "geri takip etti" diye işaretle.
+    const { igHistory = {} } = await chrome.storage.local.get('igHistory');
+    igHistoryOps(cp.followers.filter((u) => { const e = igHistory[u.id]; return e && e.f && !e.u && !e.b; })
+      .map((u) => ({ op: 'back', id: u.id, h: u.username })));
     ctx.log('ok', 'igScanDone', {
       following: cp.following.length,
       followers: cp.followers.length,
@@ -261,16 +270,43 @@
     await chrome.storage.local.set({ igData });
   }
 
+  // Görev sırasından gelen "N kişiyi bırak" adımı: listeyi son taramadan kur.
+  // Korunanlar hariç; mode 'app' ise yalnızca eklentinin en az N gün önce takip ettikleri.
+  async function autoQueue(ctx, viewerId) {
+    const { igData, igKeep = [], igHistory = {} } = await chrome.storage.local.get(['igData', 'igKeep', 'igHistory']);
+    if (!igData || igData.viewerId !== viewerId) return null;
+    const keep = new Set(igKeep);
+    const followers = new Set(igData.followers.map((u) => u.id));
+    const minAge = Math.max(0, Number(ctx.settings.ig.unfollowMinDays) || 0) * 86400000;
+    return igData.following
+      .filter((u) => !followers.has(u.id) && !keep.has(u.id))
+      .filter((u) => {
+        if (ctx.rec.auto.mode !== 'app') return true;
+        const e = igHistory[u.id];
+        return e && e.f && !e.u && Date.now() - e.f >= minAge;
+      })
+      .slice(0, Math.max(1, Number(ctx.rec.auto.count) || 1))
+      .map((u) => ({ id: u.id, username: u.username }));
+  }
+
   register('igUnfollow', async (ctx) => {
     const ctl = ctx.ctl;
     const s = ctx.settings.ig;
-    const queue = Array.isArray(ctx.rec.queue) ? ctx.rec.queue : [];
+    let queue = Array.isArray(ctx.rec.queue) ? ctx.rec.queue : [];
     let pos = Math.max(0, ctx.rec.pos || 0);
     const viewerId = cookie('ds_user_id');
 
     if (!viewerId) { ctx.log('error', 'igNoSession'); return { status: 'error' }; }
     if (ctx.rec.viewerId && ctx.rec.viewerId !== viewerId) { ctx.log('error', 'igWrongAccount'); return { status: 'error' }; }
     if (!cookie('csrftoken')) { ctx.log('error', 'igNoCsrf'); return { status: 'error' }; }
+
+    if (ctx.rec.auto && !Array.isArray(ctx.rec.queue)) {
+      const q = await autoQueue(ctx, viewerId);
+      if (!q) { ctx.log('error', 'igNeedScan'); return { status: 'error' }; }
+      if (!q.length) { ctx.log('info', 'igAutoEmpty'); return { status: 'done' }; }
+      queue = q;
+      await ctx.update({ queue }, true);
+    }
 
     if (pos === 0) {
       ctx.log('info', 'igUnfollowStart', { n: queue.length, min: sec(s.unfollowDelayMin), max: sec(s.unfollowDelayMax) });
@@ -292,6 +328,7 @@
       if (out.ok) {
         used = await ctx.dailyAdd('igUnfollow');
         await dropFromResults(u.id);
+        igHistoryOps([{ op: 'unfollow', id: u.id, h: u.username }]);
         await ctx.bump('done', 1, 'ok');
         ctx.log('ok', 'igUnfollowed', { n: ctx.counts.done, max: queue.length, h: u.username });
       } else {
@@ -312,6 +349,276 @@
     }
 
     ctx.log('info', 'igUnfollowDone', { ok: ctx.counts.done, fail: ctx.counts.errors });
+    return { status: 'done' };
+  });
+
+  // ------------------------------------------------------------------ filtreli takip
+
+  const DAY = 86400000;
+  const lcList = (a) => (a || []).map((x) => String(x).toLowerCase().trim()).filter(Boolean);
+  const handleOf = (s) => String(s || '').trim().replace(/^@/, '')
+    .replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').split(/[/?#\s]/)[0];
+
+  // Gönderi bağlantısındaki kısa koddan (instagram.com/p/KOD/) medya kimliğine.
+  function mediaIdFromUrl(url) {
+    const m = String(url || '').match(/instagram\.com\/(?:[\w.]+\/)?(?:p|reel|reels|tv)\/([A-Za-z0-9_-]+)/) ||
+      String(url || '').match(/^([A-Za-z0-9_-]{6,})$/);
+    if (!m) return '';
+    const ABC = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+    let id = 0n;
+    for (const c of m[1].slice(0, 11)) { const i = ABC.indexOf(c); if (i < 0) return ''; id = id * 64n + BigInt(i); }
+    return id.toString();
+  }
+
+  async function profileByName(username, ctl) {
+    const json = await igFetch(api(`/api/v1/users/web_profile_info/?username=${encodeURIComponent(username)}`), ctl);
+    const u = json && json.data && json.data.user;
+    if (!u) throw new IgError('http', 404);
+    const count = (e) => (e && typeof e.count === 'number' ? e.count : null);
+    return {
+      id: String(u.id || ''),
+      username: String(u.username || username),
+      name: String(u.full_name || ''),
+      bio: String(u.biography || ''),
+      followers: count(u.edge_followed_by),
+      following: count(u.edge_follow),
+      posts: count(u.edge_owner_to_timeline_media),
+      private: !!u.is_private,
+      verified: !!u.is_verified,
+      business: !!(u.is_business_account || u.is_professional_account),
+      noPhoto: DEFAULT_PIC.test(String(u.profile_pic_url || '')),
+      followedByViewer: !!u.followed_by_viewer,
+      followsViewer: !!u.follows_viewer,
+      requested: !!u.requested_by_viewer
+    };
+  }
+
+  // Takip edilecek adayların kaynağı; her next() çağrısı bir sayfa döndürür, bitince null.
+  async function openFollowSource(ctx, s, viewerId, mine) {
+    const ctl = ctx.ctl;
+    if (s.sourceList === 'mine') {
+      if (!mine) throw new IgError('needScan');
+      const following = new Set(mine.following.map((u) => u.id));
+      let given = false;
+      return { label: '@' + (ctx.account.username || 'me'), listKey: 'igListMine', mine: true,
+        next: async () => (given ? null : ((given = true), mine.followers.filter((u) => !following.has(u.id)))) };
+    }
+    if (s.sourceList === 'likers') {
+      const mediaId = mediaIdFromUrl(s.postUrl);
+      if (!mediaId) throw new IgError('badPost');
+      let given = false;
+      return { label: String(s.postUrl).replace(/^https?:\/\/(www\.)?/, '').slice(0, 60), listKey: 'igListLikers',
+        next: async () => {
+          if (given) return null;
+          given = true;
+          const json = await igFetch(api(`/api/v1/media/${mediaId}/likers/`), ctl);
+          return (json.users || []).map(normUser);
+        } };
+    }
+    const target = handleOf(s.sourceUser);
+    if (!target) throw new IgError('needTarget');
+    const p = await profileByName(target, ctl);
+    if (p.private && !p.followedByViewer) throw new IgError('targetPrivate');
+    const kind = s.sourceList === 'following' ? 'following' : 'followers';
+    let cursor = '';
+    let done = false;
+    const seenCursors = new Set();
+    return { label: '@' + target, listKey: kind === 'following' ? 'igListFollowing' : 'igListFollowers', exclude: p.id,
+      next: async () => {
+        if (done) return null;
+        let url = api(`/api/v1/friendships/${p.id}/${kind}/?count=25&search_surface=follow_list_page`);
+        if (cursor) url += `&max_id=${encodeURIComponent(cursor)}`;
+        const json = await igFetch(url, ctl);
+        const nextId = json.next_max_id == null ? '' : String(json.next_max_id);
+        if (!nextId || json.has_more === false || seenCursors.has(nextId)) done = true;
+        seenCursors.add(nextId);
+        cursor = nextId;
+        return (json.users || []).map(normUser);
+      } };
+  }
+
+  const outside = (v, min, max) => (min > 0 || max > 0) && (v == null || (min > 0 && v < min) || (max > 0 && v > max));
+  const needsDetail = (s) => !!(s.minFollowers > 0 || s.maxFollowers > 0 || s.minFollowing > 0 || s.maxFollowing > 0 ||
+    s.minRatio > 0 || s.maxRatio > 0 || s.minPosts > 0 || s.requireBio || s.minBioLength > 0 ||
+    lcList(s.bioInclude).length || lcList(s.bioExclude).length || s.skipBusiness);
+
+  // Liste verisiyle yapılabilen (ek istek gerektirmeyen) eleme.
+  function quickReject(u, s, f) {
+    if (f.followingIds.has(u.id)) return 'following';
+    if (s.skipHistory && f.history[u.id]) return 'history';
+    if (!f.mine && s.skipFollowsYou && f.followerIds.has(u.id)) return 'followsYou';
+    if (s.skipNoPhoto && u.noPhoto) return 'noPhoto';
+    if (s.skipPrivate && u.private) return 'protected';
+    if (s.verifiedMode === 'skip' && u.verified) return 'verified';
+    if (s.verifiedMode === 'only' && !u.verified) return 'notVerified';
+    if (s.skipBotHandles && /\d{5,}/.test(u.username)) return 'botHandle';
+    const name = `${u.name} ${u.username}`.toLowerCase();
+    if (f.nameIn.length && !f.nameIn.some((k) => name.includes(k))) return 'name';
+    if (f.nameOut.some((k) => name.includes(k))) return 'badName';
+    return null;
+  }
+
+  // Profil sayfası okunarak yapılan eleme.
+  function detailReject(p, s, f) {
+    if (p.followedByViewer) return 'following';
+    if (p.requested) return 'pending';
+    if (!f.mine && s.skipFollowsYou && p.followsViewer) return 'followsYou';
+    if (s.skipNoPhoto && p.noPhoto) return 'noPhoto';
+    if (s.skipBusiness && p.business) return 'business';
+    if (outside(p.followers, s.minFollowers, s.maxFollowers)) return 'followers';
+    if (outside(p.following, s.minFollowing, s.maxFollowing)) return 'followingCount';
+    if (s.minRatio > 0 || s.maxRatio > 0) {
+      if (p.followers == null || p.following == null) return 'noData';
+      const r = p.followers / Math.max(1, p.following);
+      if ((s.minRatio > 0 && r < s.minRatio) || (s.maxRatio > 0 && r > s.maxRatio)) return 'ratio';
+    }
+    if (s.minPosts > 0 && (p.posts == null || p.posts < s.minPosts)) return 'posts';
+    if (s.requireBio && !p.bio) return 'noBio';
+    if (s.minBioLength > 0 && p.bio.length < s.minBioLength) return 'shortBio';
+    const bio = p.bio.toLowerCase();
+    if (f.bioIn.length && !f.bioIn.some((k) => bio.includes(k))) return 'noKeyword';
+    if (f.bioOut.some((k) => bio.includes(k))) return 'badKeyword';
+    return null;
+  }
+
+  async function followUser(id, ctl) {
+    const csrf = cookie('csrftoken');
+    const form = { 'content-type': 'application/x-www-form-urlencoded', 'x-csrftoken': csrf };
+    const body = `user_id=${encodeURIComponent(id)}`;
+    const attempts = [
+      { url: api(`/api/v1/friendships/create/${encodeURIComponent(id)}/`), headers: { ...IG_HEADERS, ...form } },
+      { url: api(`/web/friendships/${encodeURIComponent(id)}/follow/`), headers: form }
+    ];
+    let out = { ok: false, blocked: false, reason: '' };
+    for (let i = 0; i < attempts.length; i++) {
+      if (i > 0) await wait(randInt(1200, 2500), ctl);
+      if (!ctl.running) return { ok: false, cancelled: true };
+      let res;
+      let text = '';
+      try {
+        res = await fetch(attempts[i].url, { method: 'POST', credentials: 'include', headers: attempts[i].headers, body });
+        text = await res.text().catch(() => '');
+      } catch (e) {
+        out = { ok: false, blocked: false, reason: errText(e) || 'network error' };
+        continue;
+      }
+      out = evaluateUnfollow(res.status, text);
+      if (out.ok) {
+        let fs = null;
+        try { fs = JSON.parse(text).friendship_status; } catch { fs = null; }
+        out.requested = !!(fs && fs.outgoing_request && !fs.following);
+        return out;
+      }
+      if (out.blocked) return out;
+    }
+    return out;
+  }
+
+  const IG_FOLLOW_ERR = { needScan: 'igNeedScan', badPost: 'igBadPost', needTarget: 'igNeedTarget', targetPrivate: 'igTargetPrivate' };
+
+  register('igFollow', async (ctx) => {
+    const ctl = ctx.ctl;
+    const s = ctx.settings.ig.follow;
+    const cap = ctx.settings.ig.dailyFollowCap;
+    const viewerId = cookie('ds_user_id');
+    if (!viewerId) { ctx.log('error', 'igNoSession'); return { status: 'error' }; }
+    if (!cookie('csrftoken')) { ctx.log('error', 'igNoCsrf'); return { status: 'error' }; }
+
+    const { igData, igHistory = {} } = await chrome.storage.local.get(['igData', 'igHistory']);
+    const mine = igData && igData.viewerId === viewerId ? igData : null;
+    const f = {
+      mine: s.sourceList === 'mine',
+      history: igHistory,
+      followingIds: new Set(mine ? mine.following.map((u) => u.id) : []),
+      followerIds: new Set(mine ? mine.followers.map((u) => u.id) : []),
+      nameIn: lcList(s.nameInclude), nameOut: lcList(s.nameExclude),
+      bioIn: lcList(s.bioInclude), bioOut: lcList(s.bioExclude)
+    };
+    const detail = needsDetail(s);
+
+    let source;
+    try {
+      source = await openFollowSource(ctx, s, viewerId, mine);
+    } catch (e) {
+      if (e.kind === 'cancelled') return { status: 'stopped' };
+      ctx.log('error', IG_FOLLOW_ERR[e.kind] || ERR_KEY[e.kind] || 'igHttp', { status: e.status || '—' });
+      return { status: 'error' };
+    }
+    ctx.log('info', 'igFollowStart', { src: source.label, listKey: source.listKey, max: s.maxPerSession, min: sec(s.delayMin), max2: sec(s.delayMax) });
+    if (!mine) ctx.log('info', 'igFollowNoScan');
+
+    const seen = new Set();
+    let used = await ctx.dailyGet('igFollow');
+    let fails = 0;
+    let actions = 0;
+
+    while (ctl.running && ctx.counts.done < s.maxPerSession) {
+      let batch;
+      try {
+        batch = await source.next();
+      } catch (e) {
+        if (e.kind === 'cancelled') break;
+        ctx.log('error', ERR_KEY[e.kind] || 'igHttp', { status: e.status || '—' });
+        return { status: 'error' };
+      }
+      if (batch === null) { ctx.log('warn', 'listEnd'); break; }
+
+      for (const u of batch) {
+        if (!ctl.running || ctx.counts.done >= s.maxPerSession) break;
+        if (used >= cap) { ctx.log('warn', 'igFollowDailyCap', { cap }); return { status: 'capped' }; }
+        if (!u.id || seen.has(u.id) || u.id === viewerId || u.id === source.exclude) continue;
+        seen.add(u.id);
+
+        let why = quickReject(u, s, f);
+        let p = null;
+        if (!why && detail) {
+          await wait(randInt(s.lookupDelayMin, s.lookupDelayMax), ctl);
+          if (!ctl.running) break;
+          try {
+            p = await profileByName(u.username, ctl);
+            why = detailReject(p, s, f);
+          } catch (e) {
+            if (e.kind === 'cancelled') break;
+            if (e.kind === 'rate' || e.kind === 'blocked' || e.kind === 'session') {
+              ctx.log('error', ERR_KEY[e.kind], { status: e.status || '—' });
+              return { status: 'error' };
+            }
+            why = 'noData';
+          }
+        }
+        if (!why && s.gender && s.gender !== 'all') {
+          const g = await ctx.gender(u.name || (p && p.name) || '', (p && p.bio) || '');
+          if (g !== s.gender) why = 'gender';
+        }
+        if (why) { ctx.skip(why); continue; }
+
+        const out = await followUser(u.id, ctl);
+        if (out.cancelled) break;
+        actions++;
+        if (out.ok) {
+          fails = 0;
+          used = await ctx.dailyAdd('igFollow');
+          f.followingIds.add(u.id);
+          igHistoryOps([{ op: 'follow', id: u.id, h: u.username, src: source.label }]);
+          await ctx.bump('done', 1, 'ok');
+          ctx.log('ok', out.requested ? 'igFollowRequested' : 'igFollowed', { n: ctx.counts.done, max: s.maxPerSession, h: u.username });
+        } else {
+          await ctx.bump('errors', 1, 'err');
+          if (out.blocked) { ctx.log('error', 'igFollowBlocked', { h: u.username }); return { status: 'error' }; }
+          ctx.log('warn', 'igFollowFail', { h: u.username, reason: out.reason });
+          if (++fails >= 3) { ctx.log('error', 'igFollowBlocked', { h: u.username }); return { status: 'error' }; }
+        }
+
+        if (ctl.running && ctx.counts.done < s.maxPerSession) {
+          await ctx.waitNext(randInt(s.delayMin, s.delayMax));
+          if (ctl.running && s.pauseEvery > 0 && actions % s.pauseEvery === 0) await ctx.waitNext(s.pauseMs, 'cooldown');
+        }
+      }
+      // sayfalar arası tarama temposu
+      if (ctl.running && ctx.counts.done < s.maxPerSession) await wait(randInt(ctx.settings.ig.scanDelayMin, ctx.settings.ig.scanDelayMax), ctl);
+    }
+
+    ctx.log('info', 'igFollowDone', { n: ctx.counts.done });
     return { status: 'done' };
   });
 

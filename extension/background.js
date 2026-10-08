@@ -10,9 +10,9 @@ const HISTORY_LIMIT = 30000;
 const HOME = { x: 'https://x.com/home', ig: 'https://www.instagram.com/' };
 const MATCH = { x: ['https://x.com/*', 'https://twitter.com/*'], ig: ['https://www.instagram.com/*'] };
 // İçerik betiğinin görev kaydına yazabileceği alanlar (running/status/tabId arka plana aittir).
-const PATCHABLE = ['counts', 'nextAt', 'waitFrom', 'waitReason', 'progress', 'pos', 'navTries'];
+const PATCHABLE = ['counts', 'nextAt', 'waitFrom', 'waitReason', 'progress', 'pos', 'navTries', 'queue'];
 // Görev başlatılırken verilebilecek ek alanlar.
-const PAYLOAD = ['queue', 'viewerId', 'fresh', 'overrides', 'queueStep'];
+const PAYLOAD = ['queue', 'viewerId', 'fresh', 'overrides', 'queueStep', 'auto'];
 
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
 
@@ -115,7 +115,10 @@ async function stopTask(task) {
 // queueRun (yalnızca burada yazılır): { running, index, phase: 'task'|'wait'|'retry', stepId, waitFrom, waitUntil, cycle, done, status }
 
 const QUEUE_ALARM = 'xo-queue';
-const QUEUE_TASK = { follow: 'xFollow', like: 'xLike', unfollow: 'xUnfollow', clean: 'xClean' };
+const QUEUE_TASK = {
+  follow: 'xFollow', like: 'xLike', unfollow: 'xUnfollow', clean: 'xClean',
+  igfollow: 'igFollow', igscan: 'igScan', igunfollow: 'igUnfollow'
+};
 const RETRY_MS = 60000;
 
 // Sıra işlemleri birbirini beklesin: bir adım biterken yenisi aynı anda başlamasın.
@@ -151,7 +154,21 @@ function stepOverrides(step) {
   }
   if (step.kind === 'unfollow') return { x: { unfollow: { maxPerSession: n } } };
   if (step.kind === 'clean') return { x: { clean: { mode: step.mode === 'reposts' ? 'reposts' : 'likes', maxPerSession: n } } };
+  if (step.kind === 'igfollow') {
+    const f = { sourceList: step.source || 'followers', maxPerSession: n };
+    if (f.sourceList === 'likers') f.postUrl = target;
+    else if (f.sourceList !== 'mine') f.sourceUser = target;
+    return { ig: { follow: f } };
+  }
   return null;
+}
+
+// Adımın görev kaydına geçen ek alanları (ayar dışı).
+function stepPayload(step) {
+  const n = Math.max(1, Math.round(Number(step.count) || 1));
+  if (step.kind === 'igscan') return { fresh: true };
+  if (step.kind === 'igunfollow') return { auto: { count: n, mode: step.source === 'app' ? 'app' : 'all' } };
+  return {};
 }
 
 async function endQueue(run, status, key, p) {
@@ -193,7 +210,7 @@ async function runStep() {
   }
 
   const task = QUEUE_TASK[step.kind];
-  const r = await startTask(task, { overrides: stepOverrides(step), queueStep: step.id });
+  const r = await startTask(task, { ...stepPayload(step), overrides: stepOverrides(step), queueStep: step.id });
   if (!r.ok) {
     if (r.error === 'errPlatformBusy') {
       // Elle başlatılmış bir görev çalışıyor: bir dakika sonra yeniden dene.
@@ -380,6 +397,44 @@ const HANDLERS = {
         for (const h of keys.slice(0, keys.length - HISTORY_LIMIT)) delete xHistory[h];
       }
       return { xHistory };
+    });
+    return { ok: true };
+  },
+
+  // Instagram takip geçmişi (kullanıcı kimliğine göre): { id: { h: kullanıcı adı, f, u, b, s } }
+  async igHistory(msg) {
+    const ops = Array.isArray(msg.ops) ? msg.ops.slice(0, 2000) : [];
+    if (!ops.length) return { ok: true };
+    await mutate(['igHistory'], ({ igHistory = {} }) => {
+      const now = Date.now();
+      let changed = false;
+      for (const o of ops) {
+        const id = String((o && o.id) || '');
+        if (!/^\d{1,25}$/.test(id)) continue;
+        const e = { ...(igHistory[id] || {}) };
+        if (o.h) e.h = String(o.h).slice(0, 40);
+        if (o.op === 'follow') {
+          e.f = now;
+          delete e.u;
+          delete e.b;
+          if (o.src) e.s = String(o.src).slice(0, 80);
+        } else if (o.op === 'unfollow') {
+          e.u = now;
+        } else if (o.op === 'back') {
+          if (!e.f || e.b) continue;
+          e.b = now;
+        } else continue;
+        igHistory[id] = e;
+        changed = true;
+      }
+      if (!changed) return null;
+      const keys = Object.keys(igHistory);
+      if (keys.length > HISTORY_LIMIT) {
+        const last = (k) => Math.max(igHistory[k].f || 0, igHistory[k].u || 0);
+        keys.sort((a, b) => last(a) - last(b));
+        for (const k of keys.slice(0, keys.length - HISTORY_LIMIT)) delete igHistory[k];
+      }
+      return { igHistory };
     });
     return { ok: true };
   },

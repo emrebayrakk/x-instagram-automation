@@ -23,6 +23,8 @@ X Otomasyon **hiçbir veriyi geliştiriciye ya da üçüncü taraflara gönderme
 | X sayfalarındaki içerik: gönderiler, profil adları, kullanıcı adları, biyografiler, takipçi/takip sayıları, hesap tarihi, konum | Senin belirlediğin filtreleri uygulamak (ör. "profil fotoğrafı olmayanları takip etme") | Sayfa üzerinde işlenir, saklanmaz |
 | X takip geçmişi: eklentiyle takip ettiğin ve bıraktığın hesapların kullanıcı adları ve tarihleri | "Tekrar takip etme" gibi filtreler ve geri takip oranı | Yalnızca tarayıcında |
 | Instagram'da takip ettiklerin ve takipçilerin: kullanıcı kimliği, kullanıcı adı, görünen ad, profil fotoğrafı adresi, onaylı/gizli bilgisi | Seni geri takip etmeyenleri bulmak | Yalnızca tarayıcında |
+| Instagram'da takip adayları: başka bir hesabın takipçi/takip listeleri ya da bir gönderiyi beğenenler; ayrıntılı filtreler açıksa adayın herkese açık profil bilgisi (biyografi, takipçi/takip/gönderi sayısı, işletme hesabı olup olmadığı) | Senin belirlediğin takip filtrelerini uygulamak | İşlenir, saklanmaz |
+| Instagram takip geçmişi: eklentiyle takip ettiğin ve bıraktığın hesapların kimlikleri, kullanıcı adları ve tarihleri | "Tekrar takip etme" filtresi, sıradaki takipten çıkma adımları ve geri dönüş oranı | Yalnızca tarayıcında |
 | Instagram oturum çerezleri (`ds_user_id`, `csrftoken`) | Instagram'a, senin zaten açık olan oturumunla istek gönderebilmek | Okunur, başka hiçbir yere gönderilmez |
 
 İsimden cinsiyet tahmini (isteğe bağlı filtre) eklentinin içindeki isim listesiyle **cihazında** yapılır.
@@ -32,7 +34,7 @@ X Otomasyon **hiçbir veriyi geliştiriciye ya da üçüncü taraflara gönderme
 Eklenti yalnızca şu adreslerle iletişim kurar:
 
 - **x.com / twitter.com:** sayfanın kendi düğmelerine senin adına tıklar.
-- **www.instagram.com:** takip/takipçi listelerini almak ve seçtiğin hesapları takipten çıkarmak için Instagram'ın kendi web isteklerini senin oturumunla gönderir.
+- **www.instagram.com:** takip/takipçi listelerini almak, takip adaylarının profillerini okumak, filtrelerine uyan hesapları takip etmek ve seçtiğin hesapları takipten çıkarmak için Instagram'ın kendi web isteklerini senin oturumunla gönderir.
 - **Instagram görsel sunucuları:** panelde profil fotoğraflarını göstermek için.
 
 Bunların dışında hiçbir sunucuya istek gönderilmez. Eklenti dışarıdan kod indirmez veya çalıştırmaz.
@@ -82,6 +84,8 @@ X Otomasyon **does not send any data to the developer or to third parties**. It 
 | Content on X pages: posts, display names, usernames, bios, follower/following counts, account creation date, location | To apply the filters you set (e.g. "don't follow accounts without a profile photo") | Processed on the page, not stored |
 | X follow history: usernames and dates of accounts you followed and unfollowed with the extension | For filters like "don't re-follow" and the follow-back rate | Your browser only |
 | Your Instagram following and followers: user ID, username, display name, profile picture URL, verified/private flags | To find accounts that don't follow you back | Your browser only |
+| Instagram follow candidates: another account's followers/following lists or a post's likers; with detailed filters on, the candidate's public profile info (bio, follower/following/post counts, whether it's a business account) | To apply the follow filters you set | Processed, not stored |
+| Instagram follow history: IDs, usernames and dates of accounts you followed and unfollowed with the extension | For the "don't re-follow" filter, queue unfollow steps and the follow-back rate | Your browser only |
 | Instagram session cookies (`ds_user_id`, `csrftoken`) | To send requests to Instagram with the session you already have open | Read, never sent anywhere else |
 
 Gender guessing from names (an optional filter) runs **on your device** using a name list bundled with the extension.
@@ -91,7 +95,7 @@ Gender guessing from names (an optional filter) runs **on your device** using a 
 The extension only talks to:
 
 - **x.com / twitter.com:** clicks the page's own buttons on your behalf.
-- **www.instagram.com:** sends Instagram's own web requests with your session to list your following/followers and unfollow the accounts you select.
+- **www.instagram.com:** sends Instagram's own web requests with your session to list following/followers, read follow candidates' profiles, follow accounts that match your filters and unfollow the accounts you select.
 - **Instagram image servers:** to show profile pictures in the panel.
 
 No requests are sent to any other server. The extension does not download or run remote code.

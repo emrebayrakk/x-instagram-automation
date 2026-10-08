@@ -17,10 +17,7 @@ _Browser automation for **your own** X (Twitter) and Instagram accounts — filt
 
 [Türkçe](#-türkçe) · [English](#-english)
 
-<img src="docs/ext-overview.png" width="24%" alt="Panel" />
-<img src="docs/ext-follow-filters.png" width="24%" alt="Filtreli takip" />
-<img src="docs/ext-instagram.png" width="24%" alt="Instagram" />
-<img src="docs/ext-queue.png" width="24%" alt="Görev sırası" />
+<img src="docs/store/tr/01.jpg" width="100%" alt="X Otomasyon yan paneli" />
 
 </div>
 
@@ -44,6 +41,15 @@ _Browser automation for **your own** X (Twitter) and Instagram accounts — filt
 | 🖥️ **Masaüstü uygulaması** (ilk sürüm) | Yalnızca X | Electron + Playwright; kendi Chromium'unu açar. |
 
 API anahtarı gerekmez: eklenti sayfanın kendi düğmelerine tıklar, Instagram'da ise sitenin kendi web isteklerini senin oturumunla kullanır. **Hiçbir veri bir sunucuya gönderilmez**; ayarlar, kayıtlar ve sonuçlar yalnızca tarayıcında (`chrome.storage`) durur.
+
+### Ekran görüntüleri
+
+<p align="center">
+<img src="docs/store/tr/02.jpg" width="49%" alt="X filtreli takip" />
+<img src="docs/store/tr/03.jpg" width="49%" alt="Instagram filtreli takip" />
+<img src="docs/store/tr/04.jpg" width="49%" alt="Görev sırası" />
+<img src="docs/store/tr/05.jpg" width="49%" alt="Takip geçmişi ve hesap temizliği" />
+</p>
 
 ### Özellikler
 
@@ -72,6 +78,8 @@ API anahtarı gerekmez: eklenti sayfanın kendi düğmelerine tıklar, Instagram
 - Arama, onaylı/gizli hesap filtreleri, kopyala ve CSV indir.
 - Seçtiklerini **yavaş tempoda** takipten çıkarır: işlemler arası bekleme, belirli aralıklarla uzun mola, günlük tavan. Instagram engellerse hemen durur.
 - Tarama yarıda kalırsa (hız sınırı, oturum vb.) **kaldığı yerden sürer**. Tarama hesabında hiçbir şeyi değiştirmez.
+- **Filtreli takip:** bir hesabın takipçileri / takip ettikleri, bir gönderiyi beğenenler ya da geri takip. Hızlı filtreler (profil fotoğrafı, gizli hesap, mavi tik, bot görünümlü ad, ad kelimeleri, zaten takip ettiklerin, geçmiş, cinsiyet) ve isteğe bağlı ayrıntılı filtreler (takipçi/takip aralığı, oran, gönderi sayısı, bio, işletme hesapları). Gizli hesaplara takip isteği gönderir.
+- **Takip geçmişi:** eklentiyle takip edilenler, tarama sırasında görülen geri takipler, geri dönüş oranı; sonuç listesinde "eklentinin takip ettikleri" ve "fotoğrafsızlar" filtreleri.
 
 **Görev sırası**
 
@@ -85,7 +93,7 @@ Adımları sırayla çalıştırır. Örnek:
 5. "#yazilim" aramasında 20 gönderi beğen
 ```
 
-- Adım türleri: takip et, beğen, takipten çık, temizle, bekle.
+- Adım türleri: X'te takip et, beğen, takipten çık, temizle; Instagram'da takip et, tara, takipten çık (geri takip etmeyenlerden ya da eklentinin N gün önce takip ettiklerinden); bekle.
 - **Hızlı kurulum:** `a, b, c` + adet + bekleme yaz; adımlar otomatik oluşur.
 - Bitince baştan başla (döngü); bir adım hata ya da günlük tavanla biterse sırayı durdur ya da sonrakine geç; beklemeyi atla.
 - Sırayı arka plan yürütür; **panel kapalıyken de devam eder**.
@@ -151,6 +159,16 @@ Two parts:
 
 No API key: the extension clicks the page's own buttons, and on Instagram it uses the site's own web requests with your session. **No data is sent to any server**; settings, logs and results stay in your browser (`chrome.storage`).
 
+### Screenshots
+
+<p align="center">
+<img src="docs/store/en/01.jpg" width="100%" alt="X Otomasyon side panel" />
+<img src="docs/store/en/02.jpg" width="49%" alt="Filtered follow on X" />
+<img src="docs/store/en/03.jpg" width="49%" alt="Filtered follow on Instagram" />
+<img src="docs/store/en/04.jpg" width="49%" alt="Task queue" />
+<img src="docs/store/en/05.jpg" width="49%" alt="Follow history and account cleanup" />
+</p>
+
 ### Features
 
 **X (Twitter)**
@@ -178,6 +196,8 @@ No API key: the extension clicks the page's own buttons, and on Instagram it use
 - Search, verified/private filters, copy and CSV download.
 - Unfollows your selection **at a slow pace**: wait between actions, long cooldowns, daily cap. Stops immediately if Instagram blocks the action.
 - An interrupted scan (rate limit, session…) **resumes where it left off**. Scanning never changes anything on your account.
+- **Filtered follow:** from an account's followers / following, a post's likers, or follow back. Quick filters (profile photo, private, blue check, bot-like names, name keywords, already following, history, gender) and optional detailed filters (follower/following range, ratio, post count, bio, business accounts). Private accounts receive a follow request.
+- **Follow history:** accounts followed by the extension, follow-backs seen during scans, follow-back rate; "followed by extension" and "no photo" filters in the results list.
 
 **Task queue**
 
@@ -191,7 +211,7 @@ Runs steps in order, for example:
 5. Like 20 posts from the "#webdev" search
 ```
 
-- Step types: follow, like, unfollow, clean up, wait.
+- Step types: on X follow, like, unfollow, clean up; on Instagram follow, scan, unfollow (from non-followers, or accounts the extension followed N days ago); wait.
 - **Quick setup:** enter `a, b, c` + count + wait; the steps are created for you.
 - Loop when finished; on an error or daily cap either stop or move on; skip a wait.
 - The background worker runs the queue, so **it keeps going with the panel closed**.
@@ -249,14 +269,14 @@ extension/                 Chrome eklentisi (Manifest V3) / Chrome extension
     x-hook.js              X'in kendi API yanıtlarından profil verisi (ek istek yok)
                            profile data from X's own API responses (no extra requests)
     x.js                   X: beğeni, takip, takipten çıkma, temizlik / like, follow, unfollow, cleanup
-    instagram.js           Instagram: tarama + takipten çıkma / scan + unfollow
+    instagram.js           Instagram: tarama, filtreli takip, takipten çıkma / scan, filtered follow, unfollow
   sidepanel/               Yan panel arayüzü / side panel UI
   lib/                     defaults.js, i18n.js (6 dil), gender.js + names.json
   scripts/build-names.cjs  names.json'u yeniden üretir / regenerates names.json
   _locales/  icons/
 
 server.js, electron-main.cjs, src/, public/   Masaüstü uygulaması / desktop app
-docs/                                         Ekran görüntüleri / screenshots
+docs/                                         Ekran görüntüleri / screenshots (store/tr, store/en)
 ```
 
 ## 🛠️ Geliştirme · Development

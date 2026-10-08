@@ -90,6 +90,43 @@
     },
     ig: {
       dailyUnfollowCap: 150,
+      dailyFollowCap: 60,
+      unfollowMinDays: 3,       // sırada "eklentinin takip ettiklerini bırak": takipten bu kadar gün sonra
+      follow: {
+        sourceList: 'followers', // 'followers' | 'following' | 'likers' (bir gönderiyi beğenenler) | 'mine' (geri takip)
+        sourceUser: '',
+        postUrl: '',
+        maxPerSession: 20,
+        delayMin: 20000,
+        delayMax: 45000,
+        pauseEvery: 10,
+        pauseMs: 600000,
+        lookupDelayMin: 2500,    // ayrıntılı filtreler için profil okuma arası bekleme
+        lookupDelayMax: 5000,
+        // hızlı filtreler (liste verisinden)
+        skipNoPhoto: true,
+        skipPrivate: false,
+        verifiedMode: 'any',     // 'any' | 'skip' | 'only'
+        skipBotHandles: false,
+        nameInclude: [],
+        nameExclude: [],
+        skipFollowsYou: true,
+        skipHistory: true,
+        gender: 'all',
+        // ayrıntılı filtreler (aday başına profil okunur; 0 = sınır yok)
+        minFollowers: 0,
+        maxFollowers: 0,
+        minFollowing: 0,
+        maxFollowing: 0,
+        minRatio: 0,
+        maxRatio: 0,
+        minPosts: 0,
+        requireBio: false,
+        minBioLength: 0,
+        bioInclude: [],
+        bioExclude: [],
+        skipBusiness: false
+      },
       // Tarama temposu (cobanov/instagram varsayılanlarına yakın)
       scanDelayMin: 1000,
       scanDelayMax: 2000,
@@ -105,7 +142,7 @@
   };
 
   // Görev kimliği -> platform. Aynı platformda aynı anda tek görev çalışır.
-  const TASKS = { xLike: 'x', xUnfollow: 'x', xFollow: 'x', xClean: 'x', igScan: 'ig', igUnfollow: 'ig' };
+  const TASKS = { xLike: 'x', xUnfollow: 'x', xFollow: 'x', xClean: 'x', igScan: 'ig', igUnfollow: 'ig', igFollow: 'ig' };
 
   function merge(base, over) {
     for (const k of Object.keys(over || {})) {
@@ -135,7 +172,7 @@
 
   function freshDaily(d) {
     if (d && d.date === today()) return d;
-    return { date: today(), xLike: 0, xUnfollow: 0, xFollow: 0, xClean: 0, igUnfollow: 0 };
+    return { date: today(), xLike: 0, xUnfollow: 0, xFollow: 0, xClean: 0, igUnfollow: 0, igFollow: 0 };
   }
 
   g.XO_DEFAULTS = DEFAULTS;

@@ -3,7 +3,7 @@
   "name": "__MSG_extName__",
   "short_name": "X Otomasyon",
   "description": "__MSG_extDesc__",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "default_locale": "tr",
   "minimum_chrome_version": "116",
   "icons": {

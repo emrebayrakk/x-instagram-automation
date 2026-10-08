@@ -658,3 +658,7 @@ input:focus, select:focus, textarea:focus {
   .grid3 { grid-template-columns: 1fr 1fr; }
   .counters { gap: 12px; }
 }
+
+/* Instagram adımları ve etiketleri */
+.qicon.ig { color: var(--ig); }
+.tag.app { background: var(--pace-soft); color: var(--pace); }

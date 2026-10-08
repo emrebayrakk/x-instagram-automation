@@ -28,7 +28,7 @@ const S = {
   queueSteps: { steps: [], loop: false, onError: 'stop' }, queueRun: null,
   qDraft: { kind: 'follow', source: 'followers', target: '', count: 15, minutes: 15, mode: 'likes' },
   view: readPref('view', 'home'),
-  igTab: 'non', igQuery: '', igHideVerified: false, igHidePrivate: false,
+  igTab: 'non', igQuery: '', igHideVerified: false, igHidePrivate: false, igOnlyApp: false, igOnlyNoPhoto: false, igHistory: {},
   igSelected: new Set(), igLimit: IG_PAGE, igMemo: null,
   logFilter: 'all',
   lastSaved: ''
@@ -87,8 +87,9 @@ const secs = (ms) => Math.round((Number(ms) || 0) / 100) / 10;
 // ------------------------------------------------------------------ depolama
 
 async function load() {
-  const d = await chrome.storage.local.get(['settings', 'daily', 'logs', 'tasks', 'accounts', 'igData', 'igCp', 'igKeep', 'xHistory', 'queueSteps', 'queueRun']);
+  const d = await chrome.storage.local.get(['settings', 'daily', 'logs', 'tasks', 'accounts', 'igData', 'igCp', 'igKeep', 'xHistory', 'igHistory', 'queueSteps', 'queueRun']);
   S.xHistory = d.xHistory || {};
+  S.igHistory = d.igHistory || {};
   S.queueSteps = normQueue(d.queueSteps);
   S.queueRun = d.queueRun || null;
   S.settings = xoMergeSettings(d.settings);
@@ -119,6 +120,7 @@ chrome.storage.onChanged.addListener((ch, area) => {
   if (ch.igCp) S.igCp = ch.igCp.newValue || null;
   if (ch.igKeep) { S.igKeep = ch.igKeep.newValue || []; S.igMemo = null; }
   if (ch.xHistory) S.xHistory = ch.xHistory.newValue || {};
+  if (ch.igHistory) S.igHistory = ch.igHistory.newValue || {};
   if (ch.queueSteps) S.queueSteps = normQueue(ch.queueSteps.newValue);
   if (ch.queueRun) S.queueRun = ch.queueRun.newValue || null;
   if (full) renderAll(); else renderDynamic();
@@ -431,9 +433,60 @@ VIEWS.ig = () => {
     </div>
     <p class="hint">${esc(T('igTimingHint'))}</p>
     <button type="button" class="link-btn" data-action="ig-timing-defaults">${esc(T('restoreDefaults'))}</button>`;
+  const follow = `
+    <div class="grid2">
+      ${field.select('ig.follow.sourceList', T('lblSourceList'), [
+        ['followers', T('optFollowers')], ['following', T('optFollowingList')], ['likers', T('igOptLikers')], ['mine', T('optMyFollowers')]])}
+      ${field.num('ig.follow.maxPerSession', T('lblMax'), { min: 1 })}
+    </div>
+    ${when('ig.follow.sourceList=followers|following', field.handle('ig.follow.sourceUser', T('lblSourceUser'), T('phSourceUser')))}
+    ${when('ig.follow.sourceList=likers', field.text('ig.follow.postUrl', T('igLblPostUrl'), T('igPhPostUrl')))}
+    ${when('ig.follow.sourceList=mine', `<p class="hint">${esc(T('igMineHint'))}</p>`)}
+    ${field.range('ig.follow.delayMin', 'ig.follow.delayMax', T('lblDelay'))}
+    <div class="grid2">
+      ${field.num('ig.follow.pauseEvery', T('lblCooldownEvery'))}
+      ${field.dur('ig.follow.pauseMs', T('lblCooldownLen'), 'min')}
+    </div>
+    ${sub('subProfile')}
+    <div class="checks">
+      ${field.check('ig.follow.skipNoPhoto', T('chkSkipNoPhoto'))}
+      ${field.check('ig.follow.skipPrivate', T('chkSkipProtected'))}
+      ${field.check('ig.follow.skipBotHandles', T('chkSkipBotHandles'))}
+    </div>
+    <div class="grid2">
+      ${field.select('ig.follow.verifiedMode', T('lblVerifiedMode'), [['any', T('optVerAny')], ['skip', T('optVerSkip')], ['only', T('optVerOnly')]])}
+      ${field.select('ig.follow.gender', T('lblGender'), [['all', T('optGenderAll')], ['female', T('optGenderFemale')], ['male', T('optGenderMale')]])}
+    </div>
+    ${field.list('ig.follow.nameInclude', T('lblNameInclude'), T('phName'))}
+    ${field.list('ig.follow.nameExclude', T('lblNameExclude'), T('phNameExclude'))}
+    ${sub('igSubDetail')}
+    <p class="hint">${esc(T('igDetailHint'))}</p>
+    <div class="grid2">
+      ${field.numRange('ig.follow.minFollowers', 'ig.follow.maxFollowers', T('lblFollowersRange'))}
+      ${field.numRange('ig.follow.minFollowing', 'ig.follow.maxFollowing', T('lblFollowingRange'))}
+    </div>
+    ${field.numRange('ig.follow.minRatio', 'ig.follow.maxRatio', T('lblRatioRange'), 'float')}
+    <div class="grid2">
+      ${field.num('ig.follow.minPosts', T('lblMinTweets'), { zero: true })}
+      ${field.num('ig.follow.minBioLength', T('lblMinBio'), { zero: true })}
+    </div>
+    <div class="checks">
+      ${field.check('ig.follow.requireBio', T('chkRequireBio'))}
+      ${field.check('ig.follow.skipBusiness', T('igChkSkipBusiness'))}
+    </div>
+    ${field.list('ig.follow.bioInclude', T('lblBioInclude'), T('phBioInclude'))}
+    ${field.list('ig.follow.bioExclude', T('lblBioExclude'), T('phBioExclude'))}
+    ${field.range('ig.follow.lookupDelayMin', 'ig.follow.lookupDelayMax', T('igLblLookupDelay'))}
+    ${sub('subOther')}
+    <div class="checks">
+      ${field.check('ig.follow.skipFollowsYou', T('chkSkipFollowsYou'))}
+      ${field.check('ig.follow.skipHistory', T('chkSkipHistory'))}
+    </div>
+    <p class="hint">${esc(T('igFollowHint'))}</p>`;
   const open = readPref('fold:igTiming', false);
   return `
     <div data-slot="acct:ig"></div>
+    ${moduleCard('igFollow', ICON.userPlus, T('igFollowTitle'), T('igFollowDesc'), follow)}
     ${moduleCard('igScan', ICON.compare, T('igScanTitle'), T('igScanDesc'), '')}
     <section class="results is-empty" aria-label="${esc(T('igResults'))}">
       <div data-slot="igseg"></div>
@@ -442,11 +495,17 @@ VIEWS.ig = () => {
         <div class="chips">
           <button type="button" class="chip" data-action="ig-filter" data-filter="igHideVerified" aria-pressed="${S.igHideVerified}">${esc(T('igHideVerified'))}</button>
           <button type="button" class="chip" data-action="ig-filter" data-filter="igHidePrivate" aria-pressed="${S.igHidePrivate}">${esc(T('igHidePrivate'))}</button>
+          <button type="button" class="chip" data-action="ig-filter" data-filter="igOnlyApp" aria-pressed="${S.igOnlyApp}">${esc(T('igOnlyApp'))}</button>
+          <button type="button" class="chip" data-action="ig-filter" data-filter="igOnlyNoPhoto" aria-pressed="${S.igOnlyNoPhoto}">${esc(T('igOnlyNoPhoto'))}</button>
         </div>
       </div>
       <div data-slot="igsel"></div>
       <ul class="ulist" data-slot="iglist"></ul>
       <div class="actionbar" data-slot="igact"></div>
+    </section>
+    <section class="card">
+      <h3 class="eyebrow">${esc(T('igHistTitle'))}</h3>
+      <div data-slot="ighist"></div>
     </section>
     <details class="fold card" data-fold="igTiming" ${open ? 'open' : ''}><summary>${esc(T('igTimingTitle'))}</summary><div class="form">${timing}</div></details>
     <p class="fineprint">${esc(T('igPrivacyNote'))}</p>`;
@@ -487,12 +546,13 @@ VIEWS.settings = () => `
   </section>
   <section class="card form">
     <h3 class="eyebrow">Instagram</h3>
-    <div class="grid2">${field.num('ig.dailyUnfollowCap', T('lblDailyIgUnfollow'))}</div>
+    <div class="grid2">${field.num('ig.dailyFollowCap', T('lblDailyIgFollow'))}${field.num('ig.dailyUnfollowCap', T('lblDailyIgUnfollow'))}${field.num('ig.unfollowMinDays', T('lblIgUnfollowMinDays'))}</div>
     <p class="hint">${esc(T('capsHint'))}</p>
   </section>
   <section class="card">
     <h3 class="eyebrow">${esc(T('secData'))}</h3>
     <div class="data-rows">
+      <div class="data-row"><span>${esc(T('igHistTitle'))}</span><button type="button" class="btn ghost sm" data-action="ighist-clear">${esc(T('clear'))}</button></div>
       <div class="data-row"><span>${esc(T('dataIg'))}</span><button type="button" class="btn ghost sm" data-action="clear-ig">${esc(T('btnDelete'))}</button></div>
       <div class="data-row"><span>${esc(T('histTitle'))}</span><button type="button" class="btn ghost sm" data-action="hist-clear">${esc(T('clear'))}</button></div>
       <div class="data-row"><span>${esc(T('dataLogs'))}</span><button type="button" class="btn ghost sm" data-action="log-clear">${esc(T('clear'))}</button></div>
@@ -536,6 +596,7 @@ const DAILY_ROWS = [
   ['xFollow', 'x', 'dailyFollowCap', 'meterXFollow'],
   ['xUnfollow', 'x', 'dailyUnfollowCap', 'meterXUnfollow'],
   ['xClean', 'x', 'dailyCleanCap', 'meterXClean'],
+  ['igFollow', 'ig', 'dailyFollowCap', 'meterIgFollow'],
   ['igUnfollow', 'ig', 'dailyUnfollowCap', 'meterIgUnfollow']
 ];
 
@@ -554,6 +615,13 @@ function activeFilters(id) {
     const s = x.like;
     return [s.skipRetweets, s.skipReplies, s.skipPromoted, s.skipNoPhoto, s.skipVerifiedAuthors, s.lang, s.maxAgeHours > 0,
       s.keywordsInclude.length, s.keywordsExclude.length].filter(Boolean).length;
+  }
+  if (id === 'igFollow') {
+    const s = S.settings.ig.follow;
+    return [s.skipNoPhoto, s.skipPrivate, s.verifiedMode !== 'any', s.skipBotHandles, s.nameInclude.length, s.nameExclude.length,
+      s.minFollowers > 0 || s.maxFollowers > 0, s.minFollowing > 0 || s.maxFollowing > 0, s.minRatio > 0 || s.maxRatio > 0,
+      s.minPosts > 0, s.requireBio, s.minBioLength > 0, s.bioInclude.length, s.bioExclude.length, s.skipBusiness,
+      s.gender !== 'all', s.skipFollowsYou, s.skipHistory].filter(Boolean).length;
   }
   if (id === 'xUnfollow') {
     const s = x.unfollow;
@@ -658,9 +726,10 @@ function taskMax(id, r) {
   if (id === 'xFollow') return S.settings.x.follow.maxPerSession;
   if (id === 'xClean') return S.settings.x.clean.maxPerSession;
   if (id === 'igUnfollow') return (r.queue || []).length;
+  if (id === 'igFollow') return S.settings.ig.follow.maxPerSession;
   return 0;
 }
-const DONE_LABEL = { xLike: 'cntLiked', xUnfollow: 'cntUnfollowed', xFollow: 'cntFollowed', xClean: 'cntCleaned', igUnfollow: 'cntUnfollowed' };
+const DONE_LABEL = { xLike: 'cntLiked', xUnfollow: 'cntUnfollowed', xFollow: 'cntFollowed', xClean: 'cntCleaned', igUnfollow: 'cntUnfollowed', igFollow: 'cntFollowed' };
 
 // En sık atlanma nedenleri: filtrelerin neyi elediğini gösterir, ayar yapmayı kolaylaştırır.
 function reasonsLine(reasons) {
@@ -756,13 +825,35 @@ function igModel() {
   return m;
 }
 
+// Eklentinin takip ettiği (ve henüz bırakmadığı) hesabın geçmiş kaydı.
+const appFollowed = (id) => { const e = (S.igHistory || {})[id]; return e && e.f && !e.u ? e : null; };
+
 function igVisible(m) {
   const q = S.igQuery.trim().toLowerCase().replace(/^@/, '');
   return (m[S.igTab] || []).filter((u) =>
     (!S.igHideVerified || !u.verified) &&
     (!S.igHidePrivate || !u.private) &&
+    (!S.igOnlyApp || appFollowed(u.id)) &&
+    (!S.igOnlyNoPhoto || u.noPhoto) &&
     (!q || u.username.toLowerCase().includes(q) || u.name.toLowerCase().includes(q)));
 }
+
+SLOTS.ighist = () => {
+  const all = Object.values(S.igHistory || {});
+  if (!all.length) return `<p class="empty">${esc(T('igHistEmpty'))}</p>`;
+  const followed = all.filter((e) => e.f).length;
+  const back = all.filter((e) => e.f && e.b).length;
+  const dropped = all.filter((e) => e.u).length;
+  const rate = new Intl.NumberFormat(S.settings.general.lang, { style: 'percent' }).format(followed ? back / followed : 0);
+  return `<dl class="stats two">
+      <div><dt>${esc(T('histFollowed'))}</dt><dd class="mono">${followed}</dd></div>
+      <div class="hl"><dt>${esc(T('histBack'))}</dt><dd class="mono">${back}<small> · ${esc(rate)}</small></dd></div>
+      <div><dt>${esc(T('histUnfollowed'))}</dt><dd class="mono">${dropped}</dd></div>
+      <div><dt>${esc(T('histTotal'))}</dt><dd class="mono">${all.length}</dd></div>
+    </dl>
+    <p class="hint">${esc(T('igHistHint'))}</p>
+    <div class="btns"><button type="button" class="btn ghost sm" data-action="ighist-csv">${esc(T('csv'))}</button><button type="button" class="btn ghost sm" data-action="ighist-clear">${esc(T('clear'))}</button></div>`;
+};
 
 const selectedUsers = (m) => m.non.filter((u) => S.igSelected.has(u.id));
 
@@ -798,7 +889,7 @@ function igRow(u, m) {
     ${selectable ? `<input type="checkbox" class="ucheck" data-action="ig-select" data-id="${esc(u.id)}" ${sel ? 'checked' : ''} aria-label="${esc(T('igSelectUser', { h: u.username }))}">` : ''}
     <span class="av" data-initial="${initial}">${u.pic ? `<img src="${esc(u.pic)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}</span>
     <span class="who"><a class="handle" href="https://www.instagram.com/${encodeURIComponent(u.username)}/" target="_blank" rel="noopener noreferrer">${esc(u.username)}</a><span class="name">${esc(u.name)}</span></span>
-    <span class="tags">${u.verified ? `<i class="tag blue">${esc(T('tagVerified'))}</i>` : ''}${u.private ? `<i class="tag">${esc(T('tagPrivate'))}</i>` : ''}</span>
+    <span class="tags">${(() => { const e = appFollowed(u.id); return e ? `<i class="tag app" title="${esc(T('igTagAppHint'))}">${esc(T('igTagApp', { d: Math.max(0, Math.floor((Date.now() - e.f) / 86400000)) }))}</i>` : ''; })()}${u.verified ? `<i class="tag blue">${esc(T('tagVerified'))}</i>` : ''}${u.private ? `<i class="tag">${esc(T('tagPrivate'))}</i>` : ''}</span>
     ${S.igTab !== 'fans' ? `<button type="button" class="mini" data-action="ig-keep" data-id="${esc(u.id)}" aria-pressed="${kept}" title="${esc(T(kept ? 'igUnkeepHint' : 'igKeepHint'))}">${esc(T(kept ? 'igUnkeep' : 'igKeep'))}</button>` : ''}
   </li>`;
 }
@@ -855,15 +946,21 @@ function logLines(list) {
 // Adımlar sırayla çalışır: bir işlem adımı (takip, beğeni…) bitince sıradaki başlar; "bekle" adımı
 // belirtilen dakika kadar bekletir. Sırayı arka plan yürütür; panel kapalıyken de devam eder.
 
-const Q_KIND = { follow: 'qTypeFollow', like: 'qTypeLike', unfollow: 'qTypeUnfollow', clean: 'qTypeClean', wait: 'qTypeWait' };
-const Q_TASK = { follow: 'xFollow', like: 'xLike', unfollow: 'xUnfollow', clean: 'xClean' };
+const Q_KIND = {
+  follow: 'qTypeFollow', like: 'qTypeLike', unfollow: 'qTypeUnfollow', clean: 'qTypeClean',
+  igfollow: 'qTypeIgFollow', igscan: 'qTypeIgScan', igunfollow: 'qTypeIgUnfollow', wait: 'qTypeWait'
+};
+const Q_IG = new Set(['igfollow', 'igscan', 'igunfollow']);
+const Q_TASK = { follow: 'xFollow', like: 'xLike', unfollow: 'xUnfollow', clean: 'xClean', igfollow: 'igFollow', igscan: 'igScan', igunfollow: 'igUnfollow' };
 const Q_SOURCES = {
   follow: [['followers', 'optFollowers'], ['following', 'optFollowingList'], ['verified', 'optVerifiedFollowers'],
     ['search', 'optSearchPeople'], ['retweets', 'optRetweeters'], ['mine', 'optMyFollowers']],
   like: [['following', 'optFollowing'], ['foryou', 'optForyou'], ['search', 'optSearch'], ['profile', 'optProfile']],
-  clean: [['likes', 'optCleanLikes'], ['reposts', 'optCleanReposts']]
+  clean: [['likes', 'optCleanLikes'], ['reposts', 'optCleanReposts']],
+  igfollow: [['followers', 'optFollowers'], ['following', 'optFollowingList'], ['likers', 'igOptLikers'], ['mine', 'optMyFollowers']],
+  igunfollow: [['all', 'qIgUnfAll'], ['app', 'qIgUnfApp']]
 };
-const Q_ICON = { follow: ICON.userPlus, like: ICON.heart, unfollow: ICON.userMinus, clean: ICON.eraser, wait: ICON.clock };
+const Q_ICON = { follow: ICON.userPlus, like: ICON.heart, unfollow: ICON.userMinus, clean: ICON.eraser, wait: ICON.clock, igfollow: ICON.userPlus, igscan: ICON.compare, igunfollow: ICON.userMinus };
 const Q_STATUS = { done: 'stDone', stopped: 'stStopped', error: 'stError', capped: 'stCapped', running: 'stRunning' };
 
 function normQueue(v) {
@@ -880,11 +977,13 @@ const qRunning = () => !!(S.queueRun && S.queueRun.running);
 function targetKind(kind, source) {
   if (kind === 'follow') return ['followers', 'following', 'verified'].includes(source) ? 'handle' : source === 'search' ? 'query' : source === 'retweets' ? 'url' : null;
   if (kind === 'like') return source === 'search' ? 'query' : source === 'profile' ? 'handle' : null;
+  if (kind === 'igfollow') return ['followers', 'following'].includes(source) ? 'handle' : source === 'likers' ? 'url' : null;
   return null;
 }
 
 function stepText(st) {
   if (st.kind === 'wait') return { title: `${T('qTypeWait')} · ${st.minutes} ${T('unitMin')}`, sub: '' };
+  if (st.kind === 'igscan') return { title: T('qTypeIgScan'), sub: T('qIgScanSub') };
   const cur = st.kind === 'clean' ? st.mode : st.source;
   const src = (Q_SOURCES[st.kind] || []).find(([v]) => v === cur);
   const tk = targetKind(st.kind, st.source);
@@ -981,10 +1080,11 @@ function qSyncForm() {
   const show = (name, on) => { const el = $(`[data-qw="${name}"]`); if (el) el.hidden = !on; };
   show('source', opts.length > 0);
   show('target', !!tk);
-  show('count', d.kind !== 'wait');
+  show('count', d.kind !== 'wait' && d.kind !== 'igscan');
   show('minutes', d.kind === 'wait');
-  const label = { handle: d.kind === 'like' ? 'lblProfileUser' : 'lblSourceUser', query: 'lblQuery', url: 'lblTweetUrl' }[tk] || 'lblSourceUser';
-  const ph = { handle: 'phSourceUser', query: d.kind === 'follow' ? 'phPeopleQuery' : 'phQuery', url: 'phTweetUrl' }[tk] || 'phSourceUser';
+  const ig = d.kind === 'igfollow';
+  const label = { handle: d.kind === 'like' ? 'lblProfileUser' : 'lblSourceUser', query: 'lblQuery', url: ig ? 'igLblPostUrl' : 'lblTweetUrl' }[tk] || 'lblSourceUser';
+  const ph = { handle: 'phSourceUser', query: d.kind === 'follow' ? 'phPeopleQuery' : 'phQuery', url: ig ? 'igPhPostUrl' : 'phTweetUrl' }[tk] || 'phSourceUser';
   $('[data-qlabel]').textContent = T(label);
   const target = $('[data-q="target"]');
   target.placeholder = T(ph);
@@ -995,7 +1095,7 @@ function qSyncForm() {
 }
 
 const qId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-const cleanHandle = (s) => String(s || '').trim().replace(/^@/, '').replace(/^https?:\/\/(www\.)?(x|twitter)\.com\//i, '').split(/[/?#\s]/)[0];
+const cleanHandle = (s) => String(s || '').trim().replace(/^@/, '').replace(/^https?:\/\/(www\.)?(x|twitter|instagram)\.com\//i, '').split(/[/?#\s]/)[0];
 
 SLOTS.qpill = () => {
   const run = S.queueRun;
@@ -1032,7 +1132,7 @@ SLOTS.qsteps = () => {
     else if (cur && run.phase === 'task') {
       const r = S.tasks[Q_TASK[st.kind]];
       const c = (r && r.counts) || {};
-      extra = `<span class="qprog mono">${c.done || 0}/${st.count} · ${esc(T('cntSkipped'))} ${c.skipped || 0}</span>`;
+      extra = st.count ? `<span class="qprog mono">${c.done || 0}/${st.count} · ${esc(T('cntSkipped'))} ${c.skipped || 0}</span>` : '';
     }
     const mark = state === 'done' ? '✓' : state === 'bad' ? '!' : String(i + 1);
     const btns = running ? '' : `<span class="qbtns">
@@ -1042,7 +1142,7 @@ SLOTS.qsteps = () => {
       </span>`;
     return `<li class="qstep ${state} ${st.kind === 'wait' ? 'is-wait' : ''}">
       <span class="qnum mono">${mark}</span>
-      <span class="qicon">${Q_ICON[st.kind] || ''}</span>
+      <span class="qicon ${Q_IG.has(st.kind) ? 'ig' : ''}">${Q_ICON[st.kind] || ''}</span>
       <span class="qtext"><b>${esc(title)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}${extra}</span>
       ${btns}
     </li>`;
@@ -1058,12 +1158,14 @@ Object.assign(ACTIONS_EXTRA, {
     let target = String(d.target || '').trim();
     if (tk === 'handle') target = cleanHandle(target);
     if (tk && !target) { toast(T('qNeedTarget'), 'bad'); $('[data-q="target"]').focus(); return; }
-    if (tk === 'url' && !/\/status(es)?\/\d+/.test(target)) { toast(T('needTweetUrl'), 'bad'); return; }
+    if (tk === 'url' && d.kind === 'follow' && !/\/status(es)?\/\d+/.test(target)) { toast(T('needTweetUrl'), 'bad'); return; }
+    if (tk === 'url' && d.kind === 'igfollow' && !/instagram\.com\/(?:[\w.]+\/)?(p|reel|reels|tv)\/[\w-]+/.test(target)) { toast(T('igNeedPostUrl'), 'bad'); return; }
     const step = { id: qId(), kind: d.kind };
     if (d.kind === 'wait') step.minutes = Math.max(0.5, Number(d.minutes) || 1);
+    else if (d.kind === 'igscan') { /* parametresiz adım */ }
     else {
       step.count = Math.max(1, Math.round(Number(d.count) || 1));
-      if (d.kind === 'follow' || d.kind === 'like') step.source = d.source;
+      if (['follow', 'like', 'igfollow', 'igunfollow'].includes(d.kind)) step.source = d.source;
       if (d.kind === 'clean') step.mode = d.mode;
       if (tk) step.target = target;
     }
@@ -1279,6 +1381,11 @@ function missingInput(task) {
     if (s.sourceList === 'search' && !String(s.query).trim()) return { path: 'x.follow.query', msg: 'needQuery' };
     if (s.sourceList === 'retweets' && !/\/status(es)?\/\d+/.test(s.tweetUrl)) return { path: 'x.follow.tweetUrl', msg: 'needTweetUrl' };
   }
+  if (task === 'igFollow') {
+    const s = S.settings.ig.follow;
+    if (['followers', 'following'].includes(s.sourceList) && !s.sourceUser) return { path: 'ig.follow.sourceUser', msg: 'needSource' };
+    if (s.sourceList === 'likers' && !/instagram\.com\/(?:[\w.]+\/)?(p|reel|reels|tv)\/[\w-]+/.test(s.postUrl)) return { path: 'ig.follow.postUrl', msg: 'igNeedPostUrl' };
+  }
   if (task === 'xLike') {
     if (x.like.feed === 'search' && !String(x.like.query).trim()) return { path: 'x.like.query', msg: 'needQuery' };
     if (x.like.feed === 'profile' && !x.like.profile) return { path: 'x.like.profile', msg: 'needProfile' };
@@ -1437,6 +1544,22 @@ const ACTIONS = {
     const ok = await confirmDialog({ title: T('confirmClearHist'), body: [T('confirmClearHistBody')], ok: T('clear'), danger: true });
     if (!ok) return;
     await chrome.storage.local.remove('xHistory');
+    toast(T('deleted'));
+  },
+
+  'ighist-csv'() {
+    const iso = (t) => (t ? new Date(t).toISOString() : '');
+    const q = (v) => `"${String(v).replace(/"/g, '""')}"`;
+    const rows = [['user_id', 'username', 'followed_at', 'followed_back_seen_at', 'unfollowed_at', 'source', 'profile_url'].join(',')]
+      .concat(Object.entries(S.igHistory || {}).map(([id, e]) =>
+        [q(id), q(e.h || ''), iso(e.f), iso(e.b), iso(e.u), q(e.s || ''), q(e.h ? `https://www.instagram.com/${e.h}/` : '')].join(',')));
+    download(`instagram-takip-gecmisi-${xoToday()}.csv`, '﻿' + rows.join('\r\n'), 'text/csv;charset=utf-8');
+  },
+
+  async 'ighist-clear'() {
+    const ok = await confirmDialog({ title: T('confirmClearHist'), body: [T('confirmClearHistBody')], ok: T('clear'), danger: true });
+    if (!ok) return;
+    await chrome.storage.local.remove('igHistory');
     toast(T('deleted'));
   },
 
