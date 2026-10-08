@@ -271,6 +271,11 @@ docs/                                         Ekran görüntüleri / screenshots
 - Instagram yöntemi / Instagram method: [cobanov/instagram](https://github.com/cobanov/instagram)
 - Cinsiyet verisi / gender data: [gender-detection-from-name](https://github.com/DavideViolante/gender-detection-from-name)
 
+## 🔒 Gizlilik · Privacy
+
+Eklenti hiçbir veriyi bir sunucuya göndermez. Ayrıntılar: [PRIVACY.md](PRIVACY.md)
+_The extension sends no data to any server. Details: [PRIVACY.md](PRIVACY.md)_
+
 ## 📄 Lisans · License
 
 [MIT](LICENSE)
