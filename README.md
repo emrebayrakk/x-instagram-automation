@@ -4,9 +4,9 @@
 
 # X Otomasyon
 
-**Kendi X (Twitter) ve Instagram hesabın için tarayıcı içi otomasyon** — filtreli takip, otomatik beğeni, geri takip etmeyenleri bırakma, hesap temizliği ve adım adım çalışan görev sırası.
+**Kendi X (Twitter) ve Instagram hesabın için tarayıcı içi otomasyon** — filtreli takip, otomatik beğeni, geri takip etmeyenleri bırakma, hesap temizliği ve kaydedilip zamanlanabilen planlar (Plan A, Plan B…).
 
-_Browser automation for **your own** X (Twitter) and Instagram accounts — filtered follow, auto-like, unfollow non-followers, account cleanup and a step-by-step task queue._
+_Browser automation for **your own** X (Twitter) and Instagram accounts — filtered follow, auto-like, unfollow non-followers, account cleanup and saved, schedulable plans (Plan A, Plan B…)._
 
 ![Chrome MV3](https://img.shields.io/badge/Chrome-Extension%20MV3-f2b544)
 ![X](https://img.shields.io/badge/X-Twitter-141722)
@@ -47,7 +47,7 @@ API anahtarı gerekmez: eklenti sayfanın kendi düğmelerine tıklar, Instagram
 <p align="center">
 <img src="docs/store/tr/02.jpg" width="49%" alt="X filtreli takip" />
 <img src="docs/store/tr/03.jpg" width="49%" alt="Instagram filtreli takip" />
-<img src="docs/store/tr/04.jpg" width="49%" alt="Görev sırası" />
+<img src="docs/store/tr/04.jpg" width="49%" alt="Planlar" />
 <img src="docs/store/tr/05.jpg" width="49%" alt="Takip geçmişi ve hesap temizliği" />
 </p>
 
@@ -81,9 +81,9 @@ API anahtarı gerekmez: eklenti sayfanın kendi düğmelerine tıklar, Instagram
 - **Filtreli takip:** bir hesabın takipçileri / takip ettikleri, bir gönderiyi beğenenler ya da geri takip. Hızlı filtreler (profil fotoğrafı, gizli hesap, mavi tik, bot görünümlü ad, ad kelimeleri, zaten takip ettiklerin, geçmiş, cinsiyet) ve isteğe bağlı ayrıntılı filtreler (takipçi/takip aralığı, oran, gönderi sayısı, bio, işletme hesapları). Gizli hesaplara takip isteği gönderir.
 - **Takip geçmişi:** eklentiyle takip edilenler, tarama sırasında görülen geri takipler, geri dönüş oranı; sonuç listesinde "eklentinin takip ettikleri" ve "fotoğrafsızlar" filtreleri.
 
-**Görev sırası**
+**Planlar**
 
-Adımları sırayla çalıştırır. Örnek:
+Bir plan, sırayla çalışan adımlardan oluşur. İstediğin kadar plan kaydedip (ör. "Sabah takibi", "Akşam temizlik") hangisini istersen onu çalıştırırsın. Örnek bir plan:
 
 ```
 1. @hesap_a takipçilerinden 15 kişi takip et
@@ -93,10 +93,14 @@ Adımları sırayla çalıştırır. Örnek:
 5. "#yazilim" aramasında 20 gönderi beğen
 ```
 
+- **Birden çok plan:** her planın adı, rengi ve kendi adımları var. Planlar arasında üstteki çiplerle geçilir; aynı anda tek plan çalışır.
+- **Plan bitince:** dur, baştan başla ya da **başka bir plana geç** (A → B → A gibi zincirler kurulabilir).
+- **Zamanlama:** seçilen günlerde belirli saatte kendiliğinden başlar (ör. hafta içi 09:00). O saatte başka plan çalışıyorsa başlatma atlanır ve kayda yazılır.
+- Çoğalt, yeniden adlandır, renk seç, sil; planı **JSON olarak dışa / içe aktar**.
 - Adım türleri: X'te takip et, beğen, takipten çık, temizle; Instagram'da takip et, tara, takipten çık (geri takip etmeyenlerden ya da eklentinin N gün önce takip ettiklerinden); bekle.
 - **Hızlı kurulum:** `a, b, c` + adet + bekleme yaz; adımlar otomatik oluşur.
-- Bitince baştan başla (döngü); bir adım hata ya da günlük tavanla biterse sırayı durdur ya da sonrakine geç; beklemeyi atla.
-- Sırayı arka plan yürütür; **panel kapalıyken de devam eder**.
+- Bir adım hata ya da günlük tavanla biterse planı durdur ya da sonrakine geç; beklemeyi atla.
+- Planı arka plan yürütür; **panel kapalıyken de devam eder**. Önceki sürümdeki görev sırası "Plan A" olarak korunur.
 
 **Panel**
 
@@ -118,7 +122,7 @@ Adımları sırayla çalıştırır. Örnek:
 1. **x.com** ve/veya **instagram.com**'da oturum aç.
 2. Panelde **X** bölümünden bir modülün **Ayarlar**'ını aç, filtreleri ve limitleri belirle, **Başlat**'a bas. Eklenti gerekirse doğru sayfaya (akış, takip listesi, hedef hesabın takipçileri) kendisi gider.
 3. **Instagram** bölümünde **Tara** → listeden seç → **Takipten çık**. Saklamak istediğin hesaplara **Koru** de.
-4. Birden çok işi arka arkaya yapmak için **Sıra** bölümünü kullan.
+4. Birden çok işi arka arkaya yapmak için **Planlar** bölümünde bir plan kur; istersen gün ve saat vererek zamanla.
 
 **İpuçları**
 
@@ -165,7 +169,7 @@ No API key: the extension clicks the page's own buttons, and on Instagram it use
 <img src="docs/store/en/01.jpg" width="100%" alt="X Otomasyon side panel" />
 <img src="docs/store/en/02.jpg" width="49%" alt="Filtered follow on X" />
 <img src="docs/store/en/03.jpg" width="49%" alt="Filtered follow on Instagram" />
-<img src="docs/store/en/04.jpg" width="49%" alt="Task queue" />
+<img src="docs/store/en/04.jpg" width="49%" alt="Plans" />
 <img src="docs/store/en/05.jpg" width="49%" alt="Follow history and account cleanup" />
 </p>
 
@@ -199,9 +203,9 @@ No API key: the extension clicks the page's own buttons, and on Instagram it use
 - **Filtered follow:** from an account's followers / following, a post's likers, or follow back. Quick filters (profile photo, private, blue check, bot-like names, name keywords, already following, history, gender) and optional detailed filters (follower/following range, ratio, post count, bio, business accounts). Private accounts receive a follow request.
 - **Follow history:** accounts followed by the extension, follow-backs seen during scans, follow-back rate; "followed by extension" and "no photo" filters in the results list.
 
-**Task queue**
+**Plans**
 
-Runs steps in order, for example:
+A plan is a list of steps that run in order. Save as many plans as you like (e.g. "Morning follow", "Evening cleanup") and run whichever you want. An example plan:
 
 ```
 1. Follow 15 people from @account_a's followers
@@ -211,10 +215,14 @@ Runs steps in order, for example:
 5. Like 20 posts from the "#webdev" search
 ```
 
+- **Multiple plans:** each plan has its own name, colour and steps. Switch between them with the chips at the top; one plan runs at a time.
+- **When a plan ends:** stop, start over, or **go on to another plan** (chains like A → B → A work).
+- **Schedule:** starts by itself at a set time on chosen days (e.g. weekdays at 09:00). If another plan is running then, the start is skipped and logged.
+- Duplicate, rename, pick a colour, delete; **export / import plans as JSON**.
 - Step types: on X follow, like, unfollow, clean up; on Instagram follow, scan, unfollow (from non-followers, or accounts the extension followed N days ago); wait.
 - **Quick setup:** enter `a, b, c` + count + wait; the steps are created for you.
-- Loop when finished; on an error or daily cap either stop or move on; skip a wait.
-- The background worker runs the queue, so **it keeps going with the panel closed**.
+- On an error or daily cap either stop the plan or move on; skip a wait.
+- The background worker runs the plan, so **it keeps going with the panel closed**. The task queue from earlier versions is kept as "Plan A".
 
 **Panel**
 
@@ -236,7 +244,7 @@ Runs steps in order, for example:
 1. Sign in at **x.com** and/or **instagram.com**.
 2. In the panel's **X** section, open a module's **Settings**, set filters and limits, press **Start**. The extension navigates to the right page (feed, following list, target's followers) by itself.
 3. In **Instagram**, press **Scan** → select from the list → **Unfollow**. Mark accounts you want to keep with **Keep**.
-4. Use the **Queue** section to run several jobs back to back.
+4. To run several jobs back to back, build a plan in the **Plans** section; give it days and a time to schedule it.
 
 **Tips**
 
@@ -261,8 +269,8 @@ The first version: an Electron app that opens its own Chromium via Playwright. I
 ```
 extension/                 Chrome eklentisi (Manifest V3) / Chrome extension
   manifest.json
-  background.js            Görev kaydı, günlük tavanlar, işlem kaydı, görev sırası
-                           task registry, daily caps, log, task queue (chrome.alarms)
+  background.js            Görev kaydı, günlük tavanlar, işlem kaydı, planlar ve zamanlama
+                           task registry, daily caps, log, plans + schedules (chrome.alarms)
   content/
     common.js              Mesajlaşma, iptal edilebilir bekleme, görev döngüsü
                            messaging, cancellable waits, task lifecycle

@@ -25,7 +25,7 @@ const S = {
   settings: xoMergeSettings(),
   daily: xoFreshDaily(),
   logs: [], tasks: {}, accounts: {}, igData: null, igCp: null, igKeep: [], xHistory: {},
-  queueSteps: { steps: [], loop: false, onError: 'stop' }, queueRun: null,
+  plans: { plans: [], activeId: '' }, planStats: {}, queueRun: null,
   qDraft: { kind: 'follow', source: 'followers', target: '', count: 15, minutes: 15, mode: 'likes' },
   view: readPref('view', 'home'),
   igTab: 'non', igQuery: '', igHideVerified: false, igHidePrivate: false, igOnlyApp: false, igOnlyNoPhoto: false, igHistory: {},
@@ -52,7 +52,20 @@ const ICON = {
   stop: svg('<rect x="6.5" y="6.5" width="11" height="11" rx="2"/>', true),
   search: svg('<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/>'),
   x: svg('<path d="M4 4h4.6l11.4 16h-4.6z"/><path d="M19.5 4L13.6 10.6M4.5 20l5.9-6.6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>', true),
-  ig: svg('<rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r="1" fill="currentColor" stroke="none"/>')
+  ig: svg('<rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r="1" fill="currentColor" stroke="none"/>'),
+  home: svg('<path d="M4 10.5L12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/>'),
+  plans: svg('<rect x="3.5" y="4" width="7" height="7" rx="2"/><rect x="13.5" y="4" width="7" height="7" rx="2"/><rect x="3.5" y="14" width="7" height="6" rx="2"/><path d="M14 17h6M17 14v6"/>'),
+  list: svg('<path d="M8 6.5h12M8 12h12M8 17.5h8"/><circle cx="4" cy="6.5" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="17.5" r="1" fill="currentColor"/>'),
+  plus: svg('<path d="M12 5v14M5 12h14"/>'),
+  edit: svg('<path d="M4 20h4L19 9a2.1 2.1 0 0 0-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>'),
+  copy: svg('<rect x="8.5" y="8.5" width="11.5" height="11.5" rx="2.5"/><path d="M15.5 8.5V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7.5a2 2 0 0 0 2 2h2.5"/>'),
+  download: svg('<path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/>'),
+  upload: svg('<path d="M12 15.5V4.5M7 9l5-5 5 5M5 20h14"/>'),
+  trash: svg('<path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5"/>'),
+  calendar: svg('<rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/>'),
+  repeat: svg('<path d="M17 3.5l3 3-3 3"/><path d="M4 11.5v-1a4 4 0 0 1 4-4h12M7 20.5l-3-3 3-3"/><path d="M20 12.5v1a4 4 0 0 1-4 4H4"/>'),
+  arrow: svg('<path d="M5 12h14M13 6l6 6-6 6"/>'),
+  skip: svg('<path d="M5 6l8 6-8 6z"/><path d="M18 6v12"/>')
 };
 const MARK = `<svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" class="mark-bg"/><path d="M9 9l14 14" class="mark-a"/><path d="M23 9L9 23" class="mark-b"/></svg>`;
 
@@ -87,10 +100,14 @@ const secs = (ms) => Math.round((Number(ms) || 0) / 100) / 10;
 // ------------------------------------------------------------------ depolama
 
 async function load() {
-  const d = await chrome.storage.local.get(['settings', 'daily', 'logs', 'tasks', 'accounts', 'igData', 'igCp', 'igKeep', 'xHistory', 'igHistory', 'queueSteps', 'queueRun']);
+  const d = await chrome.storage.local.get(['settings', 'daily', 'logs', 'tasks', 'accounts', 'igData', 'igCp', 'igKeep', 'xHistory', 'igHistory', 'queuePlans', 'queueSteps', 'planStats', 'queueRun']);
   S.xHistory = d.xHistory || {};
   S.igHistory = d.igHistory || {};
-  S.queueSteps = normQueue(d.queueSteps);
+  S.plans = xoNormPlans(d.queuePlans, d.queueSteps);
+  if (!d.queuePlans && d.queueSteps) {
+    chrome.storage.local.set({ queuePlans: S.plans }).then(() => chrome.storage.local.remove('queueSteps')).catch(() => {});
+  }
+  S.planStats = d.planStats || {};
   S.queueRun = d.queueRun || null;
   S.settings = xoMergeSettings(d.settings);
   S.daily = xoFreshDaily(d.daily);
@@ -121,7 +138,12 @@ chrome.storage.onChanged.addListener((ch, area) => {
   if (ch.igKeep) { S.igKeep = ch.igKeep.newValue || []; S.igMemo = null; }
   if (ch.xHistory) S.xHistory = ch.xHistory.newValue || {};
   if (ch.igHistory) S.igHistory = ch.igHistory.newValue || {};
-  if (ch.queueSteps) S.queueSteps = normQueue(ch.queueSteps.newValue);
+  if (ch.queuePlans) {
+    const had = S.plans.plans.length > 0;
+    S.plans = xoNormPlans(ch.queuePlans.newValue);
+    if (S.view === 'queue' && had !== S.plans.plans.length > 0) full = true; // boş ekran <-> plan ekranı
+  }
+  if (ch.planStats) S.planStats = ch.planStats.newValue || {};
   if (ch.queueRun) S.queueRun = ch.queueRun.newValue || null;
   if (full) renderAll(); else renderDynamic();
 });
@@ -215,15 +237,17 @@ function applyTheme() {
 
 function renderAll() {
   applyTheme();
-  const tabs = [['home', T('navHome')], ['x', 'X'], ['ig', 'Instagram'], ['queue', T('navQueue')], ['log', T('navLog')]];
+  const tabs = [['home', T('navHome'), ICON.home], ['x', 'X', ICON.x], ['ig', 'Instagram', ICON.ig], ['queue', T('navQueue'), ICON.plans], ['log', T('navLog'), ICON.list]];
   $('#app').innerHTML = `
-    <header class="top">
-      <div class="brand"><span class="mark">${MARK}</span><span class="brand-text"><b>X Otomasyon</b><small>X · Instagram</small></span></div>
-      <button type="button" class="icon-btn gear" data-action="view" data-view="settings" aria-label="${esc(T('settingsTitle'))}" title="${esc(T('settingsTitle'))}">${ICON.sliders}</button>
-    </header>
-    <nav class="tabs" role="tablist" aria-label="${esc(T('navLabel'))}">
-      ${tabs.map(([v, label]) => `<button type="button" role="tab" class="tab" data-action="view" data-view="${v}" aria-selected="false">${esc(label)}<span data-slot="dot:${v}"></span></button>`).join('')}
-    </nav>
+    <div class="chrome">
+      <header class="top">
+        <div class="brand"><span class="mark">${MARK}</span><span class="brand-text"><b>X Otomasyon</b><small>X · Instagram</small></span></div>
+        <button type="button" class="icon-btn gear" data-action="view" data-view="settings" aria-label="${esc(T('settingsTitle'))}" title="${esc(T('settingsTitle'))}">${ICON.sliders}</button>
+      </header>
+      <nav class="tabs" role="tablist" aria-label="${esc(T('navLabel'))}">
+        ${tabs.map(([v, label, icon]) => `<button type="button" role="tab" class="tab" data-action="view" data-view="${v}" aria-selected="false">${icon}<span class="tab-label">${esc(label)}</span><span class="tab-dot" data-slot="dot:${v}"></span></button>`).join('')}
+      </nav>
+    </div>
     <main id="view" class="view"></main>
     <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
     <dialog id="dlg" class="dlg"></dialog>`;
@@ -668,8 +692,9 @@ SLOTS.daily = () => {
 SLOTS.active = () => {
   const ids = Object.keys(PLATFORM_OF).filter((id) => S.tasks[id] && S.tasks[id].running);
   const run = S.queueRun;
+  const rp = run && run.running ? planById(run.planId) : null;
   const queue = run && run.running ? `<div class="card active">
-      <div class="active-head">${pf('x')}<b>${esc(T('qTitle'))}</b>${qStopBtn()}</div>
+      <div class="active-head" data-color="${rp ? rp.color : 'amber'}"><i class="pdot on" aria-hidden="true"></i><b>${esc(rp ? rp.name : run.planName || T('qTitle'))}</b><button type="button" class="link-btn" data-action="view" data-view="queue">${esc(T('navQueue'))}</button>${qStopBtn()}</div>
       <p class="qstatus">${esc(qStatusText())}</p>
       ${run.phase === 'wait' || run.phase === 'retry' ? qWaitBar(run) : ''}
     </div>` : '';
@@ -931,9 +956,11 @@ function logText(e) {
   const p = { ...(e.p || {}) };
   if (p.task) p.task = T('task.' + p.task);
   if (p.kindKey) p.kind = T(p.kindKey);
+  if (p.eKey && T(p.eKey, p) !== p.eKey) p.e = T(p.eKey, p);
   if (p.listKey) p.list = T('log.' + p.listKey);
   if (p.modeKey) p.mode = T('log.' + p.modeKey);
   if (p.st) p.st = T(Q_STATUS[p.st] || 'stError');
+  if (/^(queue|plan)/.test(e.key) && !p.name) p.name = T('qTitle');
   return T('log.' + e.key, p);
 }
 
@@ -942,13 +969,19 @@ function logLines(list) {
   return list.map((e) => `<li class="ln ${esc(e.lvl)}"><time class="mono" datetime="${new Date(e.t).toISOString()}">${esc(fmtTime(e.t))}</time>${pf(e.src)}<span>${esc(logText(e))}</span></li>`).join('');
 }
 
-// ------------------------------------------------------------------ görev sırası
-// Adımlar sırayla çalışır: bir işlem adımı (takip, beğeni…) bitince sıradaki başlar; "bekle" adımı
-// belirtilen dakika kadar bekletir. Sırayı arka plan yürütür; panel kapalıyken de devam eder.
+// ------------------------------------------------------------------ planlar
+// Plan: sırayla çalışan adımlar (takip, beğeni… ve "bekle"). Birden çok plan kaydedilir (Plan A, Plan B…);
+// istenen plan elle ya da zamanlamayla çalışır, aynı anda tek plan çalışır. Planı arka plan yürütür,
+// panel kapalıyken de devam eder. Bitince durabilir, başa dönebilir ya da başka bir plana geçebilir.
 
 const Q_KIND = {
   follow: 'qTypeFollow', like: 'qTypeLike', unfollow: 'qTypeUnfollow', clean: 'qTypeClean',
   igfollow: 'qTypeIgFollow', igscan: 'qTypeIgScan', igunfollow: 'qTypeIgUnfollow', wait: 'qTypeWait'
+};
+// Tür kutucuklarındaki kısa adlar (platform rozeti ayrıca görünür).
+const Q_TILE = {
+  follow: 'qTypeFollow', like: 'qTypeLike', unfollow: 'qTypeUnfollow', clean: 'qTypeClean',
+  igfollow: 'qTypeFollow', igscan: 'qTileScan', igunfollow: 'qTypeUnfollow', wait: 'qTypeWait'
 };
 const Q_IG = new Set(['igfollow', 'igscan', 'igunfollow']);
 const Q_TASK = { follow: 'xFollow', like: 'xLike', unfollow: 'xUnfollow', clean: 'xClean', igfollow: 'igFollow', igscan: 'igScan', igunfollow: 'igUnfollow' };
@@ -962,16 +995,53 @@ const Q_SOURCES = {
 };
 const Q_ICON = { follow: ICON.userPlus, like: ICON.heart, unfollow: ICON.userMinus, clean: ICON.eraser, wait: ICON.clock, igfollow: ICON.userPlus, igscan: ICON.compare, igunfollow: ICON.userMinus };
 const Q_STATUS = { done: 'stDone', stopped: 'stStopped', error: 'stError', capped: 'stCapped', running: 'stRunning' };
+const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
-function normQueue(v) {
-  return {
-    steps: v && Array.isArray(v.steps) ? v.steps : [],
-    loop: !!(v && v.loop),
-    onError: v && v.onError === 'next' ? 'next' : 'stop'
-  };
-}
-const saveQueue = () => chrome.storage.local.set({ queueSteps: S.queueSteps });
 const qRunning = () => !!(S.queueRun && S.queueRun.running);
+const runPlanId = () => (qRunning() ? S.queueRun.planId || '' : '');
+const planById = (id) => S.plans.plans.find((p) => p.id === id) || null;
+const curPlan = () => planById(S.plans.activeId) || S.plans.plans[0] || null;
+const planLocked = (p) => !!p && runPlanId() === p.id;
+const planReady = (p) => !!p && p.steps.some((s) => Q_TASK[s.kind]);
+
+function savePlans(p) {
+  if (p) p.updatedAt = Date.now();
+  return chrome.storage.local.set({ queuePlans: S.plans });
+}
+
+// "Plan B" -> "B"; diğer adlarda ilk harf.
+function planInitial(p) {
+  const m = /^\S+\s+(\S{1,2})$/.exec(p.name.trim());
+  if (m && /^(plan|piano)$/i.test(p.name.trim().split(/\s+/)[0])) return m[1].toLocaleUpperCase(S.settings.general.lang);
+  return (Array.from(p.name.trim())[0] || '?').toLocaleUpperCase(S.settings.general.lang);
+}
+
+function nextPlanName() {
+  const used = new Set(S.plans.plans.map((p) => p.name.trim().toLowerCase()));
+  const word = T('planWord');
+  for (let i = 0; i < 26; i++) {
+    const n = `${word} ${String.fromCharCode(65 + i)}`;
+    if (!used.has(n.toLowerCase())) return n;
+  }
+  return `${word} ${S.plans.plans.length + 1}`;
+}
+
+function uniqueName(name, used) {
+  let n = name.slice(0, 40);
+  for (let i = 2; used.has(n.toLowerCase()); i++) n = `${name.slice(0, 34)} (${i})`;
+  return n;
+}
+
+const dayName = (d, weekday = 'short') => new Intl.DateTimeFormat(S.settings.general.lang, { weekday }).format(new Date(2026, 0, 4 + d)); // 4 Ocak 2026 Pazar
+function daysText(days) {
+  const k = [...days].sort().join('');
+  if (k === '0123456') return T('planEveryDay');
+  if (k === '12345') return T('planWeekdays');
+  if (k === '06') return T('planWeekend');
+  return DAY_ORDER.filter((d) => days.includes(d)).map((d) => dayName(d)).join(', ');
+}
+const scheduleText = (sc) => (sc.on && sc.days.length ? `${daysText(sc.days)} · ${sc.time}` : '');
+const fmtWhen = (t) => new Intl.DateTimeFormat(S.settings.general.lang, { weekday: 'short', hour: '2-digit', minute: '2-digit' }).format(t);
 
 // Adımın hedef alanı ne bekliyor: kullanıcı adı, arama sorgusu, gönderi bağlantısı ya da hiçbiri.
 function targetKind(kind, source) {
@@ -999,59 +1069,67 @@ function qWaitBar(run) {
   return `<div class="qwait"><div class="tempo-bar"><span style="width:${pct.toFixed(2)}%;--left:${Math.round(left)}ms"></span></div><b class="mono">${fmtClock(left)}</b></div>`;
 }
 
-function qStatusText() {
+// Çalışan planın durumu; p verilirse ve çalışmıyorsa o planın son çalışması.
+function qStatusText(p) {
   const run = S.queueRun;
-  const total = S.queueSteps.steps.length;
-  if (run && run.running) {
+  if (run && run.running && (!p || run.planId === p.id)) {
+    const rp = planById(run.planId);
+    const total = rp ? rp.steps.length : 0;
     const n = run.index + 1;
     const cycle = run.cycle > 1 ? ` · ${T('qCycle', { n: run.cycle })}` : '';
     if (run.phase === 'wait') return T('qStatusWait', { n, total }) + cycle;
     if (run.phase === 'retry') return T('qStatusRetry') + cycle;
     return T('qStatusTask', { n, total }) + cycle;
   }
-  if (run && run.endedAt) return T('qLast', { st: T(Q_STATUS[run.status] || 'stStopped'), t: relTime(run.endedAt) });
-  return T('qStatusIdle', { n: total });
+  if (!p) return '';
+  const st = S.planStats[p.id];
+  if (st && st.at && st.status !== 'running') return T('qLast', { st: T(Q_STATUS[st.status] || 'stStopped'), t: relTime(st.at) });
+  return p.steps.length ? T('qStatusIdle', { n: p.steps.length }) : T('planNoSteps');
 }
 
 const qStopBtn = () => `<button type="button" class="btn stop sm" data-action="q-stop">${ICON.stop}${esc(T('btnStop'))}</button>`;
+const planFileInput = '<input type="file" id="planFile" accept=".json,application/json" hidden>';
+const iconBtn = (action, icon, label, dis) => `<button type="button" class="icon-btn" data-action="${action}" aria-label="${esc(label)}" title="${esc(label)}" ${dis ? 'disabled' : ''}>${icon}</button>`;
 
 VIEWS.queue = () => {
-  const q = S.queueSteps;
-  return `
-  <article class="module qcard">
-    <header class="module-head">
-      <span class="module-icon">${ICON.steps}</span>
-      <div class="module-title"><h3>${esc(T('qTitle'))}</h3><div data-slot="qpill"></div></div>
-      <div class="module-ctl" data-slot="qctl"></div>
-    </header>
-    <p class="module-desc">${esc(T('qDesc'))}</p>
-    <div data-slot="qstatus"></div>
-    <div class="qopts">
-      <label class="check"><input type="checkbox" data-qopt="loop" ${q.loop ? 'checked' : ''}><span>${esc(T('qLoop'))}</span></label>
-      <label class="field"><span>${esc(T('qOnError'))}</span><select data-qopt="onError">
-        <option value="stop" ${q.onError === 'stop' ? 'selected' : ''}>${esc(T('qOnErrorStop'))}</option>
-        <option value="next" ${q.onError === 'next' ? 'selected' : ''}>${esc(T('qOnErrorNext'))}</option>
-      </select></label>
+  if (!S.plans.plans.length) {
+    return `
+  <section class="pempty">
+    <span class="pempty-art" aria-hidden="true"><i data-color="amber">A</i><i data-color="blue">B</i><i data-color="green">C</i></span>
+    <h2>${esc(T('planEmptyTitle'))}</h2>
+    <p>${esc(T('planEmptyBody'))}</p>
+    <div class="btns">
+      <button type="button" class="btn go" data-action="p-new">${ICON.plus}${esc(T('planCreate'))}</button>
+      <button type="button" class="btn ghost" data-action="p-import">${ICON.upload}${esc(T('planImport'))}</button>
     </div>
-  </article>
+  </section>
+  ${planFileInput}
+  <p class="fineprint">${esc(T('qHint'))}</p>`;
+  }
+  return `
+  <div class="pbar-row">
+    <div class="pbar" role="tablist" aria-label="${esc(T('plansTitle'))}" data-slot="pbar"></div>
+    ${iconBtn('p-import', ICON.upload, T('planImport'))}
+  </div>
+  <article class="phero"><div data-slot="phead"></div><div class="pstate" data-slot="pstate"></div></article>
   <section class="block">
     <div class="block-head"><h2 class="eyebrow">${esc(T('qSteps'))}</h2><button type="button" class="link-btn" data-action="q-clear">${esc(T('qClear'))}</button></div>
     <ol class="qsteps" data-slot="qsteps"></ol>
   </section>
   <section class="card form qadd">
     <h3 class="eyebrow">${esc(T('qAddTitle'))}</h3>
-    <div class="grid2">
-      <label class="field"><span>${esc(T('qType'))}</span><select data-q="kind">${Object.entries(Q_KIND).map(([v, k]) => `<option value="${v}">${esc(T(k))}</option>`).join('')}</select></label>
-      <label class="field" data-qw="source"><span>${esc(T('lblSource'))}</span><select data-q="source"></select></label>
-    </div>
+    <div class="ktiles" role="group" aria-label="${esc(T('qType'))}">${Object.keys(Q_KIND).map((v) => `<button type="button" class="ktile ${Q_IG.has(v) ? 'ig' : v === 'wait' ? 'wait' : 'x'}" data-action="q-kind" data-kind="${v}" aria-pressed="false" title="${esc(T(Q_KIND[v]))}">
+        <span class="ktile-icon">${Q_ICON[v]}</span><span class="ktile-label">${esc(T(Q_TILE[v]))}</span>${v === 'wait' ? '' : pf(Q_IG.has(v) ? 'ig' : 'x')}</button>`).join('')}</div>
+    <label class="field" data-qw="source"><span>${esc(T('lblSource'))}</span><select data-q="source"></select></label>
     <label class="field" data-qw="target"><span data-qlabel></span><span class="qtarget"><input type="text" spellcheck="false" autocomplete="off" data-q="target"></span></label>
     <div class="grid2">
       <label class="field" data-qw="count"><span>${esc(T('qCount'))}</span><input type="number" min="1" step="1" data-q="count"></label>
       <label class="field" data-qw="minutes"><span>${esc(T('qMinutes'))}</span><input type="number" min="0.5" step="0.5" data-q="minutes"></label>
     </div>
-    <button type="button" class="btn go" data-action="q-add">${esc(T('qAdd'))}</button>
+    <button type="button" class="btn go" data-action="q-add">${ICON.plus}${esc(T('qAdd'))}</button>
   </section>
-  <details class="fold card" data-fold="qbulk" ${readPref('fold:qbulk', true) ? 'open' : ''}><summary>${esc(T('qBulkTitle'))}</summary><div class="form">
+  <details class="fold card" data-fold="psettings" ${readPref('fold:psettings', true) ? 'open' : ''}><summary>${ICON.sliders}${esc(T('planSettings'))}</summary><div class="form" data-slot="psettings"></div></details>
+  <details class="fold card" data-fold="qbulk" ${readPref('fold:qbulk', false) ? 'open' : ''}><summary>${ICON.steps}${esc(T('qBulkTitle'))}</summary><div class="form">
     <p class="hint">${esc(T('qBulkDesc'))}</p>
     <label class="field"><span>${esc(T('qBulkAccounts'))}</span><textarea rows="3" spellcheck="false" data-qb="accounts" placeholder="${esc(T('qBulkPh'))}"></textarea></label>
     <div class="grid3">
@@ -1061,19 +1139,19 @@ VIEWS.queue = () => {
     </div>
     <button type="button" class="btn ghost" data-action="q-bulk">${esc(T('qBulkAdd'))}</button>
   </div></details>
+  ${planFileInput}
   <p class="fineprint">${esc(T('qHint'))}</p>`;
 };
 
 // Ekleme formunu taslağa göre doldur; tür/kaynak değişince görünen alanları ayarla.
 function qSyncForm() {
   const d = S.qDraft;
-  const kind = $('[data-q="kind"]');
-  if (!kind) return;
-  kind.value = d.kind;
+  const src = $('[data-q="source"]');
+  if (!src) return;
+  $$('.ktile').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.kind === d.kind)));
   const opts = Q_SOURCES[d.kind] || [];
   const key = d.kind === 'clean' ? 'mode' : 'source';
   if (opts.length && !opts.some(([v]) => v === d[key])) d[key] = opts[0][0];
-  const src = $('[data-q="source"]');
   src.innerHTML = opts.map(([v, k]) => `<option value="${v}">${esc(T(k))}</option>`).join('');
   if (opts.length) src.value = d[key];
   const tk = targetKind(d.kind, d.source);
@@ -1097,33 +1175,75 @@ function qSyncForm() {
 const qId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const cleanHandle = (s) => String(s || '').trim().replace(/^@/, '').replace(/^https?:\/\/(www\.)?(x|twitter|instagram)\.com\//i, '').split(/[/?#\s]/)[0];
 
-SLOTS.qpill = () => {
-  const run = S.queueRun;
-  if (run && run.running) return `<span class="pill run"><i aria-hidden="true"></i>${esc(T('stRunning'))}</span>`;
-  const cls = { done: 'ok', error: 'bad', stopped: 'mute' }[run && run.status] || 'mute';
-  return `<span class="pill ${cls}">${esc(run && run.status ? T(Q_STATUS[run.status] || 'stReady') : T('stReady'))}</span>`;
+SLOTS.pbar = () => {
+  const cur = curPlan();
+  const live = runPlanId();
+  return S.plans.plans.map((p) => `<button type="button" class="pchip" role="tab" data-color="${p.color}" data-action="p-select" data-id="${esc(p.id)}" aria-selected="${!!cur && cur.id === p.id}">
+      <i class="pdot ${live === p.id ? 'on' : ''}" aria-hidden="true"></i><span class="pchip-name">${esc(p.name)}</span>${p.schedule.on ? ICON.calendar : ''}<small class="mono">${p.steps.length}</small>
+    </button>`).join('') + `<button type="button" class="pchip new" data-action="p-new">${ICON.plus}<span>${esc(T('planNew'))}</span></button>`;
 };
 
-SLOTS.qctl = () => {
+SLOTS.phead = (_, el) => {
+  const p = curPlan();
+  const box = el.closest('.phero');
+  if (box && p) box.dataset.color = p.color;
+  if (!p) return '';
+  const locked = planLocked(p);
   const run = S.queueRun;
-  if (run && run.running) {
-    const skip = run.phase === 'wait' || run.phase === 'retry'
-      ? `<button type="button" class="btn ghost sm" data-action="q-skip">${esc(T('qSkipWait'))}</button>` : '';
-    return `<div class="btns">${skip}${qStopBtn()}</div>`;
+  const wait = p.steps.filter((s) => s.kind === 'wait').reduce((a, s) => a + (Number(s.minutes) || 0), 0);
+  const meta = [T('planStepsN', { n: p.steps.length }), wait ? T('planWaitN', { m: Math.round(wait * 10) / 10 }) : ''].filter(Boolean).join(' · ');
+  const badges = [];
+  const sc = scheduleText(p.schedule);
+  if (sc) badges.push(`<span class="pbadge">${ICON.calendar}${esc(sc)}</span>`);
+  if (p.after === 'loop') badges.push(`<span class="pbadge">${ICON.repeat}${esc(T('planAfterLoop'))}</span>`);
+  const next = p.after === 'plan' ? planById(p.next) : null;
+  if (next) badges.push(`<span class="pbadge" data-color="${next.color}">${ICON.arrow}<i class="pdot" aria-hidden="true"></i>${esc(next.name)}</span>`);
+  if (p.onError === 'next') badges.push(`<span class="pbadge">${ICON.skip}${esc(T('planErrSkipBadge'))}</span>`);
+  let ctl;
+  if (locked) {
+    const skip = run.phase === 'wait' || run.phase === 'retry' ? `<button type="button" class="btn ghost" data-action="q-skip">${ICON.skip}${esc(T('qSkipWait'))}</button>` : '';
+    ctl = `${skip}<button type="button" class="btn stop" data-action="q-stop">${ICON.stop}${esc(T('btnStop'))}</button>`;
+  } else {
+    ctl = `<button type="button" class="btn go lg" data-action="q-start" ${planReady(p) && !qRunning() ? '' : 'disabled'}>${ICON.play}${esc(T('btnQueueStart'))}</button>`;
   }
-  const ready = S.queueSteps.steps.some((s) => Q_TASK[s.kind]);
-  return `<button type="button" class="btn go" data-action="q-start" ${ready ? '' : 'disabled'}>${ICON.play}${esc(T('btnQueueStart'))}</button>`;
+  return `<div class="phero-top">
+      <span class="pav" aria-hidden="true">${esc(planInitial(p))}</span>
+      <div class="ptitle"><h2>${esc(p.name)}</h2><p class="pmeta">${esc(meta)}</p></div>
+      <div class="pmenu">
+        ${iconBtn('p-edit', ICON.edit, T('planEdit'))}${iconBtn('p-dup', ICON.copy, T('planDuplicate'))}${iconBtn('p-export', ICON.download, T('planExport'))}${iconBtn('p-del', ICON.trash, T('planDelete'), locked)}
+      </div>
+    </div>
+    ${badges.length ? `<div class="pbadges">${badges.join('')}</div>` : ''}
+    <div class="phero-ctl">${ctl}</div>`;
 };
 
-SLOTS.qstatus = () => `<p class="qstatus">${esc(qStatusText())}</p>`;
+SLOTS.pstate = () => {
+  const p = curPlan();
+  if (!p) return '';
+  const run = S.queueRun;
+  if (qRunning() && !planLocked(p)) {
+    const rp = planById(run.planId);
+    return `<div class="pnote"><span>${esc(T('planRunningOther', { name: rp ? rp.name : run.planName || '' }))}</span>
+      <button type="button" class="link-btn" data-action="p-select" data-id="${esc(run.planId || '')}">${esc(T('planGoRunning'))}</button></div>`;
+  }
+  const status = `<p class="qstatus">${esc(qStatusText(p))}</p>`;
+  if (!planLocked(p)) {
+    const next = xoNextPlanRun(p.schedule);
+    return status + (next ? `<p class="pnext">${ICON.calendar}<span>${esc(T('planNextRun', { t: `${fmtWhen(next)} · ${relTime(next)}` }))}</span></p>` : '');
+  }
+  const pct = Math.min(100, (run.index / Math.max(1, p.steps.length)) * 100);
+  return status + `<div class="pprog" role="progressbar" aria-valuemin="0" aria-valuemax="${p.steps.length}" aria-valuenow="${run.index}"><span style="width:${pct.toFixed(1)}%"></span></div>`;
+};
 
 SLOTS.qsteps = () => {
-  const { steps } = S.queueSteps;
+  const p = curPlan();
+  if (!p) return '';
+  const { steps } = p;
   const run = S.queueRun;
-  const running = qRunning();
+  const running = planLocked(p);
   if (!steps.length) return `<li class="empty">${esc(T('qEmpty'))}</li>`;
   return steps.map((st, i) => {
-    const res = run && run.done ? run.done[st.id] : null;
+    const res = running && run.done ? run.done[st.id] : null;
     const cur = running && run.stepId === st.id;
     const state = cur ? 'cur' : res === 'done' ? 'done' : res ? 'bad' : '';
     const { title, sub } = stepText(st);
@@ -1142,17 +1262,234 @@ SLOTS.qsteps = () => {
       </span>`;
     return `<li class="qstep ${state} ${st.kind === 'wait' ? 'is-wait' : ''}">
       <span class="qnum mono">${mark}</span>
-      <span class="qicon ${Q_IG.has(st.kind) ? 'ig' : ''}">${Q_ICON[st.kind] || ''}</span>
+      <span class="qicon ${Q_IG.has(st.kind) ? 'ig' : st.kind === 'wait' ? 'wait' : ''}">${Q_ICON[st.kind] || ''}</span>
       <span class="qtext"><b>${esc(title)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}${extra}</span>
       ${btns}
     </li>`;
   }).join('') + (running ? `<li class="qlock">${esc(T('qLocked'))}</li>` : '');
 };
 
-// Sıra eylemleri; aşağıda ACTIONS'a eklenir.
+// Plan ayarları: bitince ne olsun, hata olursa ne olsun, zamanlama. (Saniyelik tazelenmez: saat alanı düzenlenirken bozulmasın.)
+SLOTS.psettings = () => {
+  const p = curPlan();
+  if (!p) return '';
+  const others = S.plans.plans.filter((o) => o.id !== p.id);
+  const seg = (k, opts) => `<div class="segc" role="group">${opts.map(([v, key]) => `<button type="button" data-action="p-set" data-k="${k}" data-v="${v}" aria-pressed="${p[k] === v}">${esc(T(key))}</button>`).join('')}</div>`;
+  const sc = p.schedule;
+  const next = xoNextPlanRun(sc);
+  const nextLine = !sc.days.length ? T('planScheduleNeedDays') : next ? T('planNextRun', { t: fmtWhen(next) }) : '';
+  return `
+    <div class="field"><span>${esc(T('planAfter'))}</span>${seg('after', [['stop', 'planAfterStop'], ['loop', 'planAfterLoop'], ['plan', 'planAfterPlan']])}</div>
+    ${p.after !== 'plan' ? '' : others.length
+    ? `<label class="field"><span>${esc(T('planNext'))}</span><select data-popt="next">${others.map((o) => `<option value="${esc(o.id)}" ${o.id === p.next ? 'selected' : ''}>${esc(o.name)}</option>`).join('')}</select></label>`
+    : `<p class="note warn">${esc(T('planNoOther'))}</p>`}
+    <div class="field"><span>${esc(T('qOnError'))}</span>${seg('onError', [['stop', 'planErrStop'], ['next', 'qOnErrorNext']])}</div>
+    <div class="psched">
+      <label class="switch"><input type="checkbox" role="switch" data-popt="sched-on" ${sc.on ? 'checked' : ''}><i aria-hidden="true"></i><span><b>${esc(T('planSchedule'))}</b><small>${esc(T('planScheduleOn'))}</small></span></label>
+      ${sc.on ? `<div class="psched-body">
+        <div class="days" role="group" aria-label="${esc(T('planDays'))}">${DAY_ORDER.map((d) => `<button type="button" class="day" data-action="p-day" data-d="${d}" aria-pressed="${sc.days.includes(d)}" title="${esc(dayName(d, 'long'))}">${esc(dayName(d))}</button>`).join('')}</div>
+        <div class="ptime-row">
+          <label class="field ptime"><span>${esc(T('planTime'))}</span><input type="time" data-popt="sched-time" value="${esc(sc.time)}"></label>
+          <p class="pnext ${sc.days.length ? '' : 'warn'}">${ICON.calendar}<span>${esc(nextLine)}</span></p>
+        </div>
+        <p class="hint">${esc(T('planScheduleHint'))}</p>
+      </div>` : ''}
+    </div>`;
+};
+
+// Plan adı ve rengi için küçük iletişim kutusu.
+function planDialog({ title, name, color, ok }) {
+  return new Promise((resolve) => {
+    const d = $('#dlg');
+    d.innerHTML = `<form method="dialog" class="dlg-body">
+      <h3>${esc(title)}</h3>
+      <label class="field"><span>${esc(T('planName'))}</span><input type="text" name="pname" maxlength="40" autocomplete="off" spellcheck="false" value="${esc(name)}"></label>
+      <div class="field"><span>${esc(T('planColor'))}</span><div class="swatches">${XO_PLAN_COLORS.map((c) => `<label class="sw" data-color="${c}"><input type="radio" name="pcolor" value="${c}" ${c === color ? 'checked' : ''} aria-label="${esc(c)}"><i aria-hidden="true"></i></label>`).join('')}</div></div>
+      <div class="dlg-actions">
+        <button type="submit" value="cancel" class="btn ghost">${esc(T('cancel'))}</button>
+        <button type="submit" value="ok" class="btn go">${esc(ok)}</button>
+      </div>
+    </form>`;
+    d.returnValue = '';
+    const f = d.querySelector('form');
+    const input = f.elements.pname;
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); d.close('ok'); } });
+    d.addEventListener('close', () => {
+      if (d.returnValue !== 'ok') { resolve(null); return; }
+      const picked = f.querySelector('input[name="pcolor"]:checked');
+      resolve({ name: input.value.trim().slice(0, 40) || name, color: picked ? picked.value : color });
+    }, { once: true });
+    d.showModal();
+    input.select();
+  });
+}
+
+// Dışa aktarma biçimi: kimlikler dosya içinde "sıradaki plan" bağlantısı için korunur, içe aktarınca yenilenir.
+function planFile(plans) {
+  return {
+    app: 'x-otomasyon', kind: 'plans', version: 1, exportedAt: new Date().toISOString(),
+    plans: plans.map(({ id, name, color, steps, after, next, onError, schedule }) => ({ id, name, color, steps, after, next, onError, schedule }))
+  };
+}
+
+const STEP_FIELDS = ['kind', 'count', 'source', 'target', 'mode', 'minutes'];
+function cleanStep(s) {
+  const out = { id: qId() };
+  for (const k of STEP_FIELDS) if (s[k] !== undefined && s[k] !== null && s[k] !== '') out[k] = typeof s[k] === 'number' ? s[k] : String(s[k]).slice(0, 300);
+  if (out.count !== undefined) out.count = Math.max(1, Math.round(Number(out.count) || 1));
+  if (out.minutes !== undefined) out.minutes = Math.max(0.5, Number(out.minutes) || 1);
+  return out;
+}
+
+async function importPlans(file) {
+  let data = null;
+  try { data = JSON.parse(await file.text()); } catch { data = null; }
+  const list = Array.isArray(data) ? data : data && Array.isArray(data.plans) ? data.plans : data && Array.isArray(data.steps) ? [data] : [];
+  const valid = list.filter((p) => p && typeof p === 'object' && Array.isArray(p.steps));
+  if (!valid.length) { toast(T('planImportBad'), 'bad'); return; }
+  const used = new Set(S.plans.plans.map((p) => p.name.trim().toLowerCase()));
+  const idMap = {};
+  const base = S.plans.plans.length;
+  const now = Date.now();
+  const added = valid.map((raw, i) => {
+    const id = 'p-' + qId() + i;
+    if (raw.id) idMap[raw.id] = id;
+    const name = uniqueName(String(raw.name || nextPlanName()).trim() || nextPlanName(), used);
+    used.add(name.toLowerCase());
+    const steps = raw.steps.filter((s) => s && Q_KIND[s.kind]).map(cleanStep);
+    // Zamanlama içe aktarılır ama kapalı gelir: başka bir bilgisayardan gelen plan kendiliğinden başlamasın.
+    return xoNormPlan({ ...raw, id, name, steps, schedule: { ...(raw.schedule || {}), on: false }, createdAt: now, updatedAt: now }, base + i);
+  });
+  for (const p of added) {
+    if (p.after !== 'plan') continue;
+    p.next = idMap[p.next] || '';
+    if (!p.next) p.after = 'stop';
+  }
+  const first = !S.plans.plans.length;
+  S.plans.plans = [...S.plans.plans, ...added];
+  S.plans.activeId = added[0].id;
+  await savePlans();
+  if (first) renderView(); else renderDynamic();
+  toast(T('planImported', { n: added.length }));
+}
+
+// Plan eylemleri; aşağıda ACTIONS'a eklenir.
 const ACTIONS_EXTRA = {};
 Object.assign(ACTIONS_EXTRA, {
+  'p-select'(el) {
+    if (!planById(el.dataset.id)) return;
+    S.plans.activeId = el.dataset.id;
+    savePlans();
+    renderDynamic();
+    const chip = $('.pchip[aria-selected="true"]');
+    if (chip) chip.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  },
+
+  async 'p-new'() {
+    const color = XO_PLAN_COLORS[S.plans.plans.length % XO_PLAN_COLORS.length];
+    const r = await planDialog({ title: T('planNewTitle'), name: nextPlanName(), color, ok: T('planCreate') });
+    if (!r) return;
+    const first = !S.plans.plans.length;
+    const used = new Set(S.plans.plans.map((p) => p.name.trim().toLowerCase()));
+    const p = xoNormPlan({ id: 'p-' + qId(), name: uniqueName(r.name, used), color: r.color, steps: [] }, S.plans.plans.length);
+    S.plans.plans = [...S.plans.plans, p];
+    S.plans.activeId = p.id;
+    await savePlans(p);
+    if (first) renderView(); else renderDynamic();
+    toast(T('planCreated', { name: p.name }));
+  },
+
+  async 'p-edit'() {
+    const p = curPlan();
+    if (!p) return;
+    const r = await planDialog({ title: T('planEditTitle'), name: p.name, color: p.color, ok: T('planSave') });
+    if (!r) return;
+    const used = new Set(S.plans.plans.filter((o) => o.id !== p.id).map((o) => o.name.trim().toLowerCase()));
+    p.name = uniqueName(r.name, used);
+    p.color = r.color;
+    await savePlans(p);
+    renderDynamic();
+  },
+
+  async 'p-dup'() {
+    const p = curPlan();
+    if (!p) return;
+    const used = new Set(S.plans.plans.map((o) => o.name.trim().toLowerCase()));
+    const c = structuredClone(p);
+    c.id = 'p-' + qId();
+    c.name = uniqueName(`${p.name.slice(0, 30)} · ${T('planCopy')}`, used);
+    c.color = XO_PLAN_COLORS[(XO_PLAN_COLORS.indexOf(p.color) + 1) % XO_PLAN_COLORS.length];
+    c.steps = c.steps.map((s) => ({ ...s, id: qId() }));
+    c.schedule.on = false;
+    c.createdAt = Date.now();
+    const i = S.plans.plans.findIndex((o) => o.id === p.id);
+    S.plans.plans = [...S.plans.plans.slice(0, i + 1), c, ...S.plans.plans.slice(i + 1)];
+    S.plans.activeId = c.id;
+    await savePlans(c);
+    renderDynamic();
+    toast(T('planDuplicated', { name: c.name }));
+  },
+
+  'p-export'() {
+    const p = curPlan();
+    if (!p) return;
+    const slug = p.name.toLowerCase().normalize('NFKD').replace(/[^\w]+/g, '-').replace(/^-|-$/g, '') || 'plan';
+    download(`x-otomasyon-${slug}.json`, JSON.stringify(planFile([p]), null, 2), 'application/json');
+  },
+
+  'p-import'() {
+    const input = $('#planFile');
+    if (input) { input.value = ''; input.click(); }
+  },
+
+  async 'p-del'() {
+    const p = curPlan();
+    if (!p) return;
+    if (planLocked(p)) { toast(T('planDeleteRunning'), 'bad'); return; }
+    const ok = await confirmDialog({ title: T('planDeleteConfirm', { name: p.name }), body: [T('planDeleteBody')], ok: T('planDelete'), danger: true });
+    if (!ok) return;
+    const i = S.plans.plans.findIndex((o) => o.id === p.id);
+    const rest = S.plans.plans.filter((o) => o.id !== p.id);
+    for (const o of rest) if (o.next === p.id) { o.next = ''; if (o.after === 'plan') o.after = 'stop'; }
+    S.plans.plans = rest;
+    S.plans.activeId = rest.length ? rest[Math.min(i, rest.length - 1)].id : '';
+    await savePlans();
+    if (!rest.length) renderView(); else renderDynamic();
+    toast(T('deleted'));
+  },
+
+  async 'p-set'(el) {
+    const p = curPlan();
+    if (!p) return;
+    const { k, v } = el.dataset;
+    if (k === 'after') {
+      p.after = v;
+      if (v === 'plan' && !planById(p.next)) { const o = S.plans.plans.find((x) => x.id !== p.id); p.next = o ? o.id : ''; }
+    }
+    if (k === 'onError') p.onError = v === 'next' ? 'next' : 'stop';
+    await savePlans(p);
+    renderDynamic(['psettings', 'phead', 'pstate']);
+  },
+
+  async 'p-day'(el) {
+    const p = curPlan();
+    if (!p) return;
+    const d = Number(el.dataset.d);
+    const days = new Set(p.schedule.days);
+    if (days.has(d)) days.delete(d); else days.add(d);
+    p.schedule.days = [...days].sort();
+    await savePlans(p);
+    renderDynamic(['psettings', 'phead', 'pstate', 'pbar']);
+  },
+
+  'q-kind'(el) {
+    S.qDraft.kind = el.dataset.kind;
+    qSyncForm();
+  },
+
   async 'q-add'() {
+    const p = curPlan();
+    if (!p) return;
     const d = S.qDraft;
     const tk = targetKind(d.kind, d.source);
     let target = String(d.target || '').trim();
@@ -1169,14 +1506,16 @@ Object.assign(ACTIONS_EXTRA, {
       if (d.kind === 'clean') step.mode = d.mode;
       if (tk) step.target = target;
     }
-    S.queueSteps.steps = [...S.queueSteps.steps, step];
+    p.steps = [...p.steps, step];
     S.qDraft.target = '';
-    await saveQueue();
+    await savePlans(p);
     qSyncForm();
     toast(T('qAdded', { n: 1 }));
   },
 
   async 'q-bulk'() {
+    const p = curPlan();
+    if (!p) return;
     const box = (k) => $(`[data-qb="${k}"]`);
     const handles = [...new Set(box('accounts').value.split(/[\s,;]+/).map(cleanHandle).filter((h) => /^[A-Za-z0-9_]{1,15}$/.test(h)))];
     if (!handles.length) { toast(T('qNeedTarget'), 'bad'); box('accounts').focus(); return; }
@@ -1188,47 +1527,52 @@ Object.assign(ACTIONS_EXTRA, {
       if (i > 0 && minutes > 0) add.push({ id: qId(), kind: 'wait', minutes });
       add.push({ id: qId(), kind: 'follow', source, target: h, count });
     });
-    // Sıranın sonunda zaten adım varsa araya da bekleme koy.
-    const last = S.queueSteps.steps[S.queueSteps.steps.length - 1];
+    // Planın sonunda zaten adım varsa araya da bekleme koy.
+    const last = p.steps[p.steps.length - 1];
     if (last && last.kind !== 'wait' && minutes > 0) add.unshift({ id: qId(), kind: 'wait', minutes });
-    S.queueSteps.steps = [...S.queueSteps.steps, ...add];
+    p.steps = [...p.steps, ...add];
     box('accounts').value = '';
-    await saveQueue();
+    await savePlans(p);
     toast(T('qAdded', { n: add.length }));
   },
 
   async 'q-move'(el) {
-    if (qRunning()) return;
+    const p = curPlan();
+    if (!p || planLocked(p)) return;
     const i = Number(el.dataset.i);
     const j = i + Number(el.dataset.d);
-    const steps = [...S.queueSteps.steps];
+    const steps = [...p.steps];
     if (j < 0 || j >= steps.length) return;
     [steps[i], steps[j]] = [steps[j], steps[i]];
-    S.queueSteps.steps = steps;
-    await saveQueue();
+    p.steps = steps;
+    await savePlans(p);
   },
 
   async 'q-del'(el) {
-    if (qRunning()) return;
-    S.queueSteps.steps = S.queueSteps.steps.filter((_, i) => i !== Number(el.dataset.i));
-    await saveQueue();
+    const p = curPlan();
+    if (!p || planLocked(p)) return;
+    p.steps = p.steps.filter((_, i) => i !== Number(el.dataset.i));
+    await savePlans(p);
   },
 
   async 'q-clear'() {
-    if (qRunning() || !S.queueSteps.steps.length) return;
+    const p = curPlan();
+    if (!p || planLocked(p) || !p.steps.length) return;
     const ok = await confirmDialog({ title: T('qConfirmClear'), body: [T('qConfirmClearBody')], ok: T('qClear'), danger: true });
     if (!ok) return;
-    S.queueSteps.steps = [];
-    await saveQueue();
+    p.steps = [];
+    await savePlans(p);
   },
 
   async 'q-start'(el) {
+    const p = curPlan();
+    if (!p) return;
     el.disabled = true;
     await flushSettings();
-    await saveQueue();
-    const r = await send({ type: 'queueStart' });
+    await savePlans();
+    const r = await send({ type: 'queueStart', planId: p.id });
     el.disabled = false;
-    if (!r || !r.ok) toast(T(r && r.error === 'qNeedSteps' ? 'qNeedSteps' : 'errGeneric', { e: (r && r.error) || '—' }), 'bad');
+    if (!r || !r.ok) toast(errText(r), 'bad');
   },
 
   'q-stop'(el) { el.disabled = true; send({ type: 'queueStop' }); },
@@ -1589,17 +1933,27 @@ function onQueueField(el, final) {
   if (el.dataset.q) {
     const k = el.dataset.q;
     const d = S.qDraft;
-    if (k === 'kind') { d.kind = el.value; qSyncForm(); }
-    else if (k === 'source') { if (d.kind === 'clean') d.mode = el.value; else d.source = el.value; qSyncForm(); }
+    if (k === 'source') { if (d.kind === 'clean') d.mode = el.value; else d.source = el.value; qSyncForm(); }
     else if (k === 'count') d.count = el.value;
     else if (k === 'minutes') d.minutes = String(el.value).replace(',', '.');
     else if (k === 'target') d.target = el.value;
     return true;
   }
-  if (el.dataset.qopt && final) {
-    if (el.dataset.qopt === 'loop') S.queueSteps.loop = el.checked;
-    if (el.dataset.qopt === 'onError') S.queueSteps.onError = el.value === 'next' ? 'next' : 'stop';
-    saveQueue();
+  if (el.dataset.popt && final) {
+    const p = curPlan();
+    if (!p) return true;
+    const k = el.dataset.popt;
+    if (k === 'next' && planById(el.value)) p.next = el.value;
+    if (k === 'sched-on') {
+      p.schedule.on = el.checked;
+      if (p.schedule.on && !p.schedule.days.length) p.schedule.days = [1, 2, 3, 4, 5];
+    }
+    if (k === 'sched-time' && /^([01]\d|2[0-3]):[0-5]\d$/.test(el.value)) p.schedule.time = el.value;
+    savePlans(p).then(() => renderDynamic(['psettings', 'phead', 'pstate', 'pbar']));
+    return true;
+  }
+  if (el.id === 'planFile' && final) {
+    if (el.files && el.files[0]) importPlans(el.files[0]);
     return true;
   }
   return false;
@@ -1644,6 +1998,6 @@ document.addEventListener('error', (e) => {
 }, true);
 
 // Geri sayım, tempo çizgisi ve göreli zamanlar saniyede bir tazelenir.
-setInterval(() => renderDynamic(['run', 'active', 'igact', 'pill', 'dot', 'qsteps', 'qstatus', 'qctl', 'qpill']), 1000);
+setInterval(() => renderDynamic(['run', 'active', 'igact', 'pill', 'dot', 'qsteps', 'pbar', 'phead', 'pstate']), 1000);
 
 load().then(renderAll);

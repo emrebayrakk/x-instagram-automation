@@ -110,11 +110,15 @@ async function stopTask(task) {
   return { ok: !!ended };
 }
 
-// ---------------------------------------------------------------- görev sırası
-// queueSteps (panelin yazdığı): { steps: [{ id, kind, count, source, target, mode, minutes }], loop, onError }
-// queueRun (yalnızca burada yazılır): { running, index, phase: 'task'|'wait'|'retry', stepId, waitFrom, waitUntil, cycle, done, status }
+// ---------------------------------------------------------------- planlar (görev sırası)
+// queuePlans (panelin yazdığı): { plans: [{ id, name, steps: [{ id, kind, count, source, target, mode, minutes }],
+//   after: 'stop'|'loop'|'plan', next, onError, schedule: { on, days, time } }], activeId }   (bkz. lib/defaults.js)
+// queueRun (yalnızca burada yazılır): { running, planId, planName, index, phase: 'task'|'wait'|'retry', stepId,
+//   waitFrom, waitUntil, cycle, chain, done, status, trigger: 'manual'|'schedule' }
+// planStats (yalnızca burada yazılır): { [planId]: { at, status, runs } }
 
 const QUEUE_ALARM = 'xo-queue';
+const PLAN_ALARM = 'xo-plan:';
 const QUEUE_TASK = {
   follow: 'xFollow', like: 'xLike', unfollow: 'xUnfollow', clean: 'xClean',
   igfollow: 'igFollow', igscan: 'igScan', igunfollow: 'igUnfollow'
@@ -129,9 +133,33 @@ function queueSerial(fn) {
   return r;
 }
 
+// Planları oku; eski tek sıra (queueSteps) varsa bir kez "Plan A" olarak taşı.
+async function loadPlans() {
+  const { queuePlans, queueSteps } = await chrome.storage.local.get(['queuePlans', 'queueSteps']);
+  const data = xoNormPlans(queuePlans, queueSteps);
+  if (!queuePlans && queueSteps) {
+    await chrome.storage.local.set({ queuePlans: data });
+    await chrome.storage.local.remove('queueSteps').catch(() => {});
+  }
+  return data;
+}
+
 async function readQueue() {
-  const { queueSteps, queueRun } = await chrome.storage.local.get(['queueSteps', 'queueRun']);
-  return { cfg: queueSteps || { steps: [] }, run: queueRun || null };
+  const data = await loadPlans();
+  const { queueRun } = await chrome.storage.local.get('queueRun');
+  const run = queueRun || null;
+  const plan = run && run.planId ? data.plans.find((p) => p.id === run.planId) : null;
+  return { data, plan, cfg: plan || { steps: [] }, run };
+}
+
+// Plan bazında son çalışma (panel planları yazarken çakışmasın diye ayrı anahtarda).
+function notePlan(planId, status) {
+  if (!planId) return Promise.resolve();
+  return mutate(['planStats'], ({ planStats = {} }) => {
+    const cur = planStats[planId] || {};
+    planStats[planId] = { at: Date.now(), status, runs: (cur.runs || 0) + (status === 'running' ? 1 : 0) };
+    return { planStats };
+  });
 }
 const saveRun = (run) => chrome.storage.local.set({ queueRun: run });
 
@@ -175,23 +203,34 @@ async function endQueue(run, status, key, p) {
   chrome.alarms.clear(QUEUE_ALARM).catch(() => {});
   Object.assign(run, { running: false, phase: null, status, endedAt: Date.now(), waitUntil: 0 });
   await saveRun(run);
-  if (key) await addLog('x', status === 'done' ? 'ok' : status === 'error' ? 'error' : 'warn', key, p);
+  await notePlan(run.planId, status);
+  if (key) await addLog('x', status === 'done' ? 'ok' : status === 'error' ? 'error' : 'warn', key, { name: run.planName || '', ...(p || {}) });
 }
 
 // Sıradaki adımı başlat (queueSerial içinden çağrılır).
 async function runStep() {
-  const { cfg, run } = await readQueue();
+  const { data, cfg, run } = await readQueue();
   if (!run || !run.running) return;
+  if (!cfg.steps || (run.planId && !data.plans.some((p) => p.id === run.planId))) return endQueue(run, 'error', 'planMissing');
   const steps = cfg.steps || [];
   let guard = 0;
   while (run.index < steps.length && !QUEUE_TASK[steps[run.index].kind] && steps[run.index].kind !== 'wait' && guard++ < 100) run.index++;
 
   if (run.index >= steps.length) {
-    if (cfg.loop && steps.some((s) => QUEUE_TASK[s.kind])) {
+    const next = cfg.after === 'plan' && cfg.next ? data.plans.find((p) => p.id === cfg.next) : null;
+    if (cfg.after === 'loop' && steps.some((s) => QUEUE_TASK[s.kind])) {
       run.index = 0;
       run.cycle = (run.cycle || 1) + 1;
       run.done = {};
-      await addLog('x', 'info', 'queueLoop', { n: run.cycle });
+      await addLog('x', 'info', 'queueLoop', { n: run.cycle, name: run.planName || '' });
+    } else if (next && next.steps.some((s) => QUEUE_TASK[s.kind])) {
+      // Plan zinciri: bu plan bitti, sıradaki plana geç (A -> B -> A da olabilir, döngü gibi çalışır).
+      await notePlan(run.planId, 'done');
+      await addLog('x', 'info', 'planChain', { from: run.planName || '', name: next.name });
+      Object.assign(run, { planId: next.id, planName: next.name, index: 0, done: {}, chain: (run.chain || 0) + 1 });
+      await saveRun(run);
+      await notePlan(next.id, 'running');
+      return runStep();
     } else {
       return endQueue(run, 'done', 'queueDone');
     }
@@ -227,6 +266,57 @@ async function runStep() {
   await addLog('x', 'info', 'queueStep', { n: run.index + 1, total: steps.length, task });
 }
 
+// Planı başlat (queueSerial içinden çağrılır). planId verilmezse panelde seçili plan.
+async function startPlan(planId, { from = 0, trigger = 'manual' } = {}) {
+  const { data, run } = await readQueue();
+  if (run && run.running) return run.planId === planId || !planId ? { ok: true } : { ok: false, error: 'qBusy', p: { name: run.planName || '' } };
+  const plan = data.plans.find((p) => p.id === (planId || data.activeId)) || (!planId && data.plans[0]);
+  if (!plan) return { ok: false, error: 'planMissing' };
+  const steps = plan.steps || [];
+  if (!steps.some((s) => QUEUE_TASK[s.kind])) return { ok: false, error: 'qNeedSteps' };
+  const index = Math.max(0, Math.min(steps.length - 1, Number(from) || 0));
+  await saveRun({ running: true, status: 'running', planId: plan.id, planName: plan.name, index, phase: null, cycle: 1, chain: 0, done: {}, trigger, startedAt: Date.now(), endedAt: 0 });
+  await notePlan(plan.id, 'running');
+  await addLog('x', 'info', trigger === 'schedule' ? 'planScheduled' : 'planStarted', { name: plan.name, n: steps.length });
+  await runStep();
+  return { ok: true };
+}
+
+// Zamanlanmış planlar için her birinin bir sonraki başlama anına alarm kur.
+let scheduleBusy = Promise.resolve();
+function syncSchedules() {
+  scheduleBusy = scheduleBusy.then(async () => {
+    const data = await loadPlans();
+    const all = typeof chrome.alarms.getAll === 'function' ? await chrome.alarms.getAll().catch(() => []) : [];
+    const want = new Map();
+    for (const p of data.plans) {
+      const at = xoNextPlanRun(p.schedule);
+      if (at && p.steps.some((s) => QUEUE_TASK[s.kind])) want.set(PLAN_ALARM + p.id, at);
+    }
+    for (const a of all) if (a.name.startsWith(PLAN_ALARM) && !want.has(a.name)) await chrome.alarms.clear(a.name).catch(() => {});
+    for (const [name, when] of want) {
+      const cur = all.find((a) => a.name === name);
+      if (!cur || Math.abs(cur.scheduledTime - when) > 1000) chrome.alarms.create(name, { when });
+    }
+  }).catch((e) => console.error('[xo] schedule', e));
+  return scheduleBusy;
+}
+
+async function onPlanAlarm(planId) {
+  await queueSerial(async () => {
+    const { data, run } = await readQueue();
+    const plan = data.plans.find((p) => p.id === planId);
+    if (!plan || !plan.schedule.on) return;
+    if (run && run.running) {
+      await addLog('x', 'warn', 'planBusySkip', { name: plan.name, cur: run.planName || '' });
+      return;
+    }
+    const r = await startPlan(planId, { trigger: 'schedule' });
+    if (!r.ok) await addLog('x', 'warn', 'planScheduleFail', { name: plan.name, e: r.error || '', eKey: r.error || '' });
+  });
+  await syncSchedules();
+}
+
 // Bir görev bittiğinde: sıradaki adıma geç ya da sırayı durdur.
 function queueOnTaskEnd(task, status, rec) {
   return queueSerial(async () => {
@@ -250,6 +340,7 @@ function queueOnTaskEnd(task, status, rec) {
 }
 
 chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name.startsWith(PLAN_ALARM)) { onPlanAlarm(alarm.name.slice(PLAN_ALARM.length)); return; }
   if (alarm.name !== QUEUE_ALARM) return;
   queueSerial(async () => {
     const { run } = await readQueue();
@@ -460,17 +551,7 @@ const HANDLERS = {
   },
 
   queueStart(msg) {
-    return queueSerial(async () => {
-      const { cfg, run } = await readQueue();
-      if (run && run.running) return { ok: true };
-      const steps = cfg.steps || [];
-      if (!steps.some((s) => QUEUE_TASK[s.kind])) return { ok: false, error: 'qNeedSteps' };
-      const from = Math.max(0, Math.min(steps.length - 1, Number(msg.from) || 0));
-      await saveRun({ running: true, status: 'running', index: from, phase: null, cycle: 1, done: {}, startedAt: Date.now(), endedAt: 0 });
-      await addLog('x', 'info', 'queueStarted', { n: steps.length });
-      await runStep();
-      return { ok: true };
-    });
+    return queueSerial(() => startPlan(msg.planId, { from: msg.from, trigger: 'manual' }));
   },
 
   queueStop() {
@@ -547,6 +628,11 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 
 // Görev süren sekmeyi Chrome'un bellek tasarrufu arka planda atmasın (sekme boşaltılırsa görev kesilir).
 const runningTabs = (tasks) => new Set(Object.values(tasks || {}).filter((r) => r && r.running && r.tabId != null).map((r) => r.tabId));
+// Planlar değişince zamanlama alarmlarını güncelle.
+chrome.storage.onChanged.addListener((ch, area) => {
+  if (area === 'local' && ch.queuePlans) syncSchedules();
+});
+
 chrome.storage.onChanged.addListener((ch, area) => {
   if (area !== 'local' || !ch.tasks) return;
   const before = runningTabs(ch.tasks.oldValue);
@@ -575,6 +661,7 @@ async function init(reason) {
     if (queueRun && queueRun.running) out.queueRun = { ...queueRun, running: false, phase: null, status: 'stopped', endedAt: Date.now() };
     return out;
   });
+  await syncSchedules();
 }
 
 chrome.runtime.onInstalled.addListener((d) => { init(d.reason); });

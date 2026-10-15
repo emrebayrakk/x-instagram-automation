@@ -175,6 +175,63 @@
     return { date: today(), xLike: 0, xUnfollow: 0, xFollow: 0, xClean: 0, igUnfollow: 0, igFollow: 0 };
   }
 
+  // ---------------------------------------------------------------- planlar (görev sırası)
+  // queuePlans = { plans: [plan], activeId }
+  // plan = { id, name, color, steps, after: 'stop'|'loop'|'plan', next, onError: 'stop'|'next',
+  //          schedule: { on, days: [0-6 (Pazar=0)], time: 'SS:DD' }, createdAt, updatedAt }
+  const PLAN_COLORS = ['amber', 'green', 'blue', 'pink', 'violet', 'teal'];
+
+  function normPlan(p, i) {
+    const s = (p && p.schedule) || {};
+    const time = /^([01]\d|2[0-3]):[0-5]\d$/.test(s.time || '') ? s.time : '09:00';
+    const days = Array.isArray(s.days) ? [...new Set(s.days.map(Number).filter((d) => d >= 0 && d <= 6))].sort() : [1, 2, 3, 4, 5];
+    return {
+      id: String((p && p.id) || 'plan-' + Date.now().toString(36) + i),
+      name: String((p && p.name) || 'Plan ' + String.fromCharCode(65 + (i % 26))).slice(0, 40),
+      color: PLAN_COLORS.includes(p && p.color) ? p.color : PLAN_COLORS[i % PLAN_COLORS.length],
+      steps: p && Array.isArray(p.steps) ? p.steps : [],
+      after: p && ['stop', 'loop', 'plan'].includes(p.after) ? p.after : p && p.loop ? 'loop' : 'stop',
+      next: (p && p.next) || '',
+      onError: p && p.onError === 'next' ? 'next' : 'stop',
+      schedule: { on: !!s.on, days, time },
+      createdAt: (p && p.createdAt) || Date.now(),
+      updatedAt: (p && p.updatedAt) || Date.now()
+    };
+  }
+
+  // Eski tek sıra (queueSteps) varsa "Plan A" olarak taşınır. Kimlik sabittir: panel ve arka plan
+  // aynı anda taşısa da tek plan oluşur.
+  function normPlans(v, legacy) {
+    if (v && Array.isArray(v.plans)) {
+      const plans = v.plans.map(normPlan);
+      const activeId = plans.some((p) => p.id === v.activeId) ? v.activeId : plans[0] ? plans[0].id : '';
+      return { plans, activeId };
+    }
+    if (legacy && Array.isArray(legacy.steps)) {
+      const p = normPlan({ id: 'plan-a', name: 'Plan A', steps: legacy.steps, loop: legacy.loop, onError: legacy.onError }, 0);
+      return { plans: [p], activeId: p.id };
+    }
+    return { plans: [], activeId: '' };
+  }
+
+  // Zamanlanmış bir planın bir sonraki başlama anı (ms); zamanlama kapalıysa 0.
+  function nextPlanRun(schedule, now = Date.now()) {
+    if (!schedule || !schedule.on || !schedule.days || !schedule.days.length) return 0;
+    const [hh, mm] = String(schedule.time || '09:00').split(':').map(Number);
+    for (let d = 0; d <= 7; d++) {
+      const c = new Date(now);
+      c.setDate(c.getDate() + d);
+      c.setHours(hh, mm, 0, 0);
+      if (c.getTime() > now + 1000 && schedule.days.includes(c.getDay())) return c.getTime();
+    }
+    return 0;
+  }
+
+  g.XO_PLAN_COLORS = PLAN_COLORS;
+  g.xoNormPlan = normPlan;
+  g.xoNormPlans = normPlans;
+  g.xoNextPlanRun = nextPlanRun;
+
   g.XO_DEFAULTS = DEFAULTS;
   g.XO_TASKS = TASKS;
   g.xoMergeSettings = mergeSettings;
