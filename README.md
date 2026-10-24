@@ -100,11 +100,12 @@ Bir plan, sırayla çalışan adımlardan oluşur. İstediğin kadar plan kayded
 - Adım türleri: X'te takip et, beğen, takipten çık, temizle; Instagram'da takip et, tara, takipten çık (geri takip etmeyenlerden ya da eklentinin N gün önce takip ettiklerinden); bekle.
 - **Hızlı kurulum:** `a, b, c` + adet + bekleme yaz; adımlar otomatik oluşur.
 - Bir adım hata ya da günlük tavanla biterse planı durdur ya da sonrakine geç; beklemeyi atla.
-- Planı arka plan yürütür; **panel kapalıyken de devam eder**. Önceki sürümdeki görev sırası "Plan A" olarak korunur.
+- Planı arka plan yürütür; **panel kapalıyken de devam eder**. Plan bir adıma geçerken **X / Instagram sekmesini öne getirmez**: sen başka bir sitede (ör. YouTube) gezinirken iş arka plandaki sekmede ilerler; X sekmesi yoksa yenisi arka planda açılır. Önceki sürümdeki görev sırası "Plan A" olarak korunur.
 
 **Panel**
 
-- Hesap durumu, günlük tavanlar ve kullanım çubukları.
+- **Canlı tempo şeridi:** bir plan ya da görev çalışırken başlığın altında; ne çalıştığı, sıradaki işleme geri sayım, tıklayınca ilgili bölüm.
+- Hesap durumu, bölmeli günlük göstergeler (tavana yaklaşınca kehribar, dolunca kırmızı).
 - **Tempo** çizgisi: son 10 dakikadaki işlemler ve bir sonraki işleme geri sayım.
 - Canlı işlem kaydı (filtrelenebilir, dışa aktarılabilir), açık/koyu tema, 6 dil.
 
@@ -126,7 +127,7 @@ Bir plan, sırayla çalışan adımlardan oluşur. İstediğin kadar plan kayded
 
 **İpuçları**
 
-- X görevleri X sekmesinde çalışır. Görev başladıktan sonra **başka sekmeye geçebilirsin**: eklenti X sekmesini arka planda da kaydırıp yeni içerik yükletir ve sekmenin Chrome tarafından boşaltılmasını engeller. Yalnızca X sekmesini kapatma.
+- X görevleri X sekmesinde çalışır. Görev başladıktan sonra **başka sekmeye geçebilirsin**: eklenti X sekmesini arka planda da kaydırıp yeni içerik yükletir ve sekmenin Chrome tarafından boşaltılmasını engeller. Yalnızca X sekmesini kapatma. Panelden elle başlattığın görevde eklenti X sekmesine geçer; planlar ise sekmeni değiştirmez.
 - Aynı platformda aynı anda tek görev çalışır; görevin sekmesi kapanırsa görev durur.
 - X art arda 3 işlemi uygulamazsa (büyük olasılıkla hız sınırı) görev kendini durdurur.
 - Başlangıç için öneri: takipte günde 50–100, işlemler arası 10–30 sn.
@@ -222,11 +223,12 @@ A plan is a list of steps that run in order. Save as many plans as you like (e.g
 - Step types: on X follow, like, unfollow, clean up; on Instagram follow, scan, unfollow (from non-followers, or accounts the extension followed N days ago); wait.
 - **Quick setup:** enter `a, b, c` + count + wait; the steps are created for you.
 - On an error or daily cap either stop the plan or move on; skip a wait.
-- The background worker runs the plan, so **it keeps going with the panel closed**. The task queue from earlier versions is kept as "Plan A".
+- The background worker runs the plan, so **it keeps going with the panel closed**. Moving to the next step **never brings the X / Instagram tab to the front**: you can keep browsing another site (e.g. YouTube) while the work continues in the background tab; if there's no X tab, one is opened in the background. The task queue from earlier versions is kept as "Plan A".
 
 **Panel**
 
-- Account status, daily caps and usage meters.
+- **Live tempo strip:** under the header while a plan or task runs; shows what's running and a countdown to the next action, and opens the related section when clicked.
+- Account status and segmented daily gauges (amber near the cap, red when full).
 - **Tempo** line: actions in the last 10 minutes and a countdown to the next one.
 - Live activity log (filterable, exportable), light/dark theme, 6 languages.
 
@@ -248,7 +250,7 @@ A plan is a list of steps that run in order. Save as many plans as you like (e.g
 
 **Tips**
 
-- X tasks run in the X tab. Once a task starts **you can switch to another tab**: the extension keeps scrolling the X tab and loading new content in the background, and stops Chrome from discarding the tab. Just don't close the X tab.
+- X tasks run in the X tab. Once a task starts **you can switch to another tab**: the extension keeps scrolling the X tab and loading new content in the background, and stops Chrome from discarding the tab. Just don't close the X tab. A task you start from the panel switches to the X tab; plans never switch your tab.
 - One task per platform at a time; closing the task's tab stops it.
 - If X rejects 3 actions in a row (most likely a rate limit), the task stops itself.
 - A sensible start: 50–100 follows a day, 10–30 s between actions.

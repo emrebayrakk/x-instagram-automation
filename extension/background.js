@@ -44,7 +44,8 @@ function finish(rec, status) {
 const senderTab = (sender) => (sender && sender.tab ? sender.tab.id : null);
 
 // ---- Sekme bulma: önce bu pencerenin etkin sekmesi, sonra en son kullanılan, yoksa yeni sekme ----
-async function resolveTab(platform) {
+// quiet: plan adımları kullanıcının o an baktığı sekmeyi değiştirmez; yeni sekme arka planda açılır.
+async function resolveTab(platform, quiet) {
   const tabs = await chrome.tabs.query({ url: MATCH[platform] });
   if (tabs.length) {
     const win = await chrome.windows.getLastFocused().catch(() => null);
@@ -54,7 +55,7 @@ async function resolveTab(platform) {
       tabs.sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0))[0];
     return { tab: pick, created: false };
   }
-  const tab = await chrome.tabs.create({ url: HOME[platform], active: true });
+  const tab = await chrome.tabs.create({ url: HOME[platform], active: !quiet });
   return { tab, created: true };
 }
 
@@ -71,7 +72,9 @@ async function startTask(task, payload) {
   const busy = Object.keys(current).find((id) => current[id].running && XO_TASKS[id] === platform);
   if (busy) return { ok: false, error: 'errPlatformBusy', p: { task: busy } };
 
-  const { tab, created } = await resolveTab(platform);
+  // Plan adımı: görev arka plandaki sekmede çalışır (x-awake ve arka plan zamanlayıcısı bunun için var).
+  const quiet = !!(payload && payload.queueStep);
+  const { tab, created } = await resolveTab(platform, quiet);
   const rec = {
     running: true, status: 'running', tabId: tab.id, startedAt: Date.now(), endedAt: 0,
     counts: { done: 0, skipped: 0, errors: 0 }, ticks: [], nextAt: 0, navTries: 0, pos: 0, progress: null
@@ -88,7 +91,7 @@ async function startTask(task, payload) {
   });
   if (refused) return { ok: false, error: 'errPlatformBusy', p: { task: refused } };
 
-  await focusTab(tab);
+  if (!quiet) await focusTab(tab);
   if (!created) {
     try { await chrome.tabs.sendMessage(tab.id, { type: 'run', task, tabId: tab.id }); }
     catch { await chrome.tabs.reload(tab.id).catch(() => {}); } // betik yoksa (eski sekme) yenile; yüklenince görevi devralır

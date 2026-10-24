@@ -247,6 +247,7 @@ function renderAll() {
       <nav class="tabs" role="tablist" aria-label="${esc(T('navLabel'))}">
         ${tabs.map(([v, label, icon]) => `<button type="button" role="tab" class="tab" data-action="view" data-view="${v}" aria-selected="false">${icon}<span class="tab-label">${esc(label)}</span><span class="tab-dot" data-slot="dot:${v}"></span></button>`).join('')}
       </nav>
+      <div class="strip-slot" data-slot="strip"></div>
     </div>
     <main id="view" class="view"></main>
     <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
@@ -703,6 +704,51 @@ SLOTS.active = () => {
     <div class="active-head">${pf(PLATFORM_OF[id])}<b>${esc(T('task.' + id))}</b>${stopBtn(id)}</div>
     ${runBlock(id)}
   </div>`).join('');
+};
+
+// Canlı tempo şeridi: çalışan plan ya da görev, sıradaki işleme geri sayım. Boşta görünmez.
+function stripWait(nextAt, from) {
+  const now = Date.now();
+  if (!nextAt || nextAt <= now) return { clock: '', bar: '' };
+  const left = nextAt - now;
+  const pct = Math.max(0, Math.min(100, (left / Math.max(1, nextAt - (from || now))) * 100));
+  return { clock: fmtClock(left), bar: `<span style="width:${pct.toFixed(2)}%;--left:${Math.round(left)}ms"></span>` };
+}
+const waitKey = (r) => (r.waitReason === 'cooldown' ? 'waitCooldown' : r.waitReason === 'scanPause' ? 'waitScanPause' : 'waitNext');
+SLOTS.strip = () => {
+  const ids = Object.keys(PLATFORM_OF).filter((id) => S.tasks[id] && S.tasks[id].running);
+  const run = S.queueRun;
+  let view, color = '', title, sub, w, platform;
+  if (run && run.running) {
+    const rp = planById(run.planId);
+    view = 'queue';
+    color = rp ? rp.color : 'amber';
+    title = rp ? rp.name : run.planName || T('qTitle');
+    const step = rp && rp.steps.find((st) => st.id === run.stepId);
+    const r = step && Q_TASK[step.kind] ? S.tasks[Q_TASK[step.kind]] : null;
+    if (run.phase === 'task' && r && r.running) {
+      w = stripWait(r.nextAt, r.waitFrom);
+      sub = `${T('task.' + Q_TASK[step.kind])} · ${T(w.clock ? waitKey(r) : 'working')}`;
+    } else {
+      w = stripWait(run.waitUntil, run.waitFrom);
+      sub = qStatusText().replace(/[.。]$/, '');
+    }
+  } else if (ids.length) {
+    const id = ids[0];
+    const r = S.tasks[id];
+    platform = PLATFORM_OF[id];
+    view = platform;
+    title = T('task.' + id) + (ids.length > 1 ? ` +${ids.length - 1}` : '');
+    w = stripWait(r.nextAt, r.waitFrom);
+    const c = r.counts || {};
+    sub = `${T(w.clock ? waitKey(r) : 'working')} · ${c.done || 0} ✓`;
+  } else return '';
+  return `<button type="button" class="strip" data-action="view" data-view="${view}" ${color ? `data-color="${color}"` : ''}>
+    ${platform ? pf(platform) : '<i class="pdot on" aria-hidden="true"></i>'}
+    <span class="strip-text"><b>${esc(title)}</b><small>${esc(sub)}</small></span>
+    <b class="strip-clock mono">${w.clock}</b>
+    <span class="strip-bar" aria-hidden="true">${w.bar}</span>
+  </button>`;
 };
 
 SLOTS.recent = () => logLines(S.logs.slice(-6).reverse());
@@ -1998,6 +2044,6 @@ document.addEventListener('error', (e) => {
 }, true);
 
 // Geri sayım, tempo çizgisi ve göreli zamanlar saniyede bir tazelenir.
-setInterval(() => renderDynamic(['run', 'active', 'igact', 'pill', 'dot', 'qsteps', 'pbar', 'phead', 'pstate']), 1000);
+setInterval(() => renderDynamic(['run', 'active', 'igact', 'pill', 'dot', 'qsteps', 'pbar', 'phead', 'pstate', 'strip']), 1000);
 
 load().then(renderAll);
