@@ -652,8 +652,9 @@ async function init(reason) {
   await mutate(['settings', 'tasks', 'accounts', 'queueRun'], ({ settings, tasks = {}, accounts = {}, queueRun }) => {
     const merged = xoMergeSettings(settings);
     if (!settings && reason === 'install') {
-      const ui = (chrome.i18n.getUILanguage() || 'tr').slice(0, 2).toLowerCase();
-      if (['tr', 'en', 'de', 'es', 'fr', 'it'].includes(ui)) merged.general.lang = ui;
+      // Tarayıcı dili destekleniyorsa o, değilse İngilizce.
+      const ui = (chrome.i18n.getUILanguage() || 'en').slice(0, 2).toLowerCase();
+      merged.general.lang = ['tr', 'en', 'de', 'es', 'fr', 'it'].includes(ui) ? ui : 'en';
     }
     for (const id of Object.keys(tasks)) if (tasks[id].running) tasks[id] = finish(tasks[id], 'stopped');
     // Tarayıcı yeniden açıldığında sekme kimlikleri baştan dağıtılır; eskileri geçersizdir.
