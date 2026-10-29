@@ -27,6 +27,7 @@ const S = {
   logs: [], tasks: {}, accounts: {}, igData: null, igCp: null, igKeep: [], xHistory: {},
   plans: { plans: [], activeId: '' }, planStats: {}, queueRun: null,
   qDraft: { kind: 'follow', source: 'followers', target: '', count: 15, minutes: 15, mode: 'likes' },
+  qEdit: null, qDraftBackup: null, // düzenlenen adımın kimliği; düzenleme bitince eski taslak geri gelir
   view: readPref('view', 'home'),
   igTab: 'non', igQuery: '', igHideVerified: false, igHidePrivate: false, igOnlyApp: false, igOnlyNoPhoto: false, igHistory: {},
   igSelected: new Set(), igLimit: IG_PAGE, igMemo: null,
@@ -1163,7 +1164,7 @@ VIEWS.queue = () => {
     <ol class="qsteps" data-slot="qsteps"></ol>
   </section>
   <section class="card form qadd">
-    <h3 class="eyebrow">${esc(T('qAddTitle'))}</h3>
+    <h3 class="eyebrow" data-qtitle>${esc(T('qAddTitle'))}</h3>
     <div class="ktiles" role="group" aria-label="${esc(T('qType'))}">${Object.keys(Q_KIND).map((v) => `<button type="button" class="ktile ${Q_IG.has(v) ? 'ig' : v === 'wait' ? 'wait' : 'x'}" data-action="q-kind" data-kind="${v}" aria-pressed="false" title="${esc(T(Q_KIND[v]))}">
         <span class="ktile-icon">${Q_ICON[v]}</span><span class="ktile-label">${esc(T(Q_TILE[v]))}</span>${v === 'wait' ? '' : pf(Q_IG.has(v) ? 'ig' : 'x')}</button>`).join('')}</div>
     <label class="field" data-qw="source"><span>${esc(T('lblSource'))}</span><select data-q="source"></select></label>
@@ -1172,7 +1173,11 @@ VIEWS.queue = () => {
       <label class="field" data-qw="count"><span>${esc(T('qCount'))}</span><input type="number" min="1" step="1" data-q="count"></label>
       <label class="field" data-qw="minutes"><span>${esc(T('qMinutes'))}</span><input type="number" min="0.5" step="0.5" data-q="minutes"></label>
     </div>
-    <button type="button" class="btn go" data-action="q-add">${ICON.plus}${esc(T('qAdd'))}</button>
+    <div class="qadd-btns">
+      <button type="button" class="btn go" data-action="q-add">${ICON.plus}${esc(T('qAdd'))}</button>
+      <button type="button" class="btn go" data-action="q-save" hidden>${ICON.edit}${esc(T('planSave'))}</button>
+      <button type="button" class="btn ghost" data-action="q-cancel" hidden>${esc(T('cancel'))}</button>
+    </div>
   </section>
   <details class="fold card" data-fold="psettings" ${readPref('fold:psettings', true) ? 'open' : ''}><summary>${ICON.sliders}${esc(T('planSettings'))}</summary><div class="form" data-slot="psettings"></div></details>
   <details class="fold card" data-fold="qbulk" ${readPref('fold:qbulk', false) ? 'open' : ''}><summary>${ICON.steps}${esc(T('qBulkTitle'))}</summary><div class="form">
@@ -1190,7 +1195,21 @@ VIEWS.queue = () => {
 };
 
 // Ekleme formunu taslağa göre doldur; tür/kaynak değişince görünen alanları ayarla.
+function endEdit() {
+  S.qEdit = null;
+  if (S.qDraftBackup) { S.qDraft = S.qDraftBackup; S.qDraftBackup = null; }
+}
+
 function qSyncForm() {
+  const ep = curPlan();
+  const editIdx = S.qEdit && ep ? ep.steps.findIndex((st) => st.id === S.qEdit) : -1;
+  if (S.qEdit && editIdx < 0) endEdit(); // plan değişti ya da adım silindi
+  const editing = !!S.qEdit;
+  const card = $('.qadd');
+  if (card) card.classList.toggle('editing', editing);
+  const title = $('[data-qtitle]');
+  if (title) title.textContent = editing ? T('qEditTitle', { n: editIdx + 1 }) : T('qAddTitle');
+  for (const [a, on] of [['q-add', !editing], ['q-save', editing], ['q-cancel', editing]]) { const b = $(`[data-action="${a}"]`); if (b) b.hidden = !on; }
   const d = S.qDraft;
   const src = $('[data-q="source"]');
   if (!src) return;
@@ -1301,12 +1320,15 @@ SLOTS.qsteps = () => {
       extra = st.count ? `<span class="qprog mono">${c.done || 0}/${st.count} · ${esc(T('cntSkipped'))} ${c.skipped || 0}</span>` : '';
     }
     const mark = state === 'done' ? '✓' : state === 'bad' ? '!' : String(i + 1);
-    const btns = running ? '' : `<span class="qbtns">
+    const editable = !running || i > run.index;
+    const editBtn = editable ? `<button type="button" class="mini" data-action="q-edit" data-i="${i}" aria-label="${esc(T('qEdit'))}" title="${esc(T('qEdit'))}" aria-pressed="${S.qEdit === st.id}">${ICON.edit}</button>` : '';
+    const btns = running ? (editBtn ? `<span class="qbtns">${editBtn}</span>` : '') : `<span class="qbtns">
+        ${editBtn}
         <button type="button" class="mini" data-action="q-move" data-i="${i}" data-d="-1" ${i === 0 ? 'disabled' : ''} aria-label="${esc(T('qMoveUp'))}" title="${esc(T('qMoveUp'))}">↑</button>
         <button type="button" class="mini" data-action="q-move" data-i="${i}" data-d="1" ${i === steps.length - 1 ? 'disabled' : ''} aria-label="${esc(T('qMoveDown'))}" title="${esc(T('qMoveDown'))}">↓</button>
         <button type="button" class="mini" data-action="q-del" data-i="${i}" aria-label="${esc(T('qDelete'))}" title="${esc(T('qDelete'))}">✕</button>
       </span>`;
-    return `<li class="qstep ${state} ${st.kind === 'wait' ? 'is-wait' : ''}">
+    return `<li class="qstep ${state} ${st.kind === 'wait' ? 'is-wait' : ''} ${S.qEdit === st.id ? 'editing' : ''}">
       <span class="qnum mono">${mark}</span>
       <span class="qicon ${Q_IG.has(st.kind) ? 'ig' : st.kind === 'wait' ? 'wait' : ''}">${Q_ICON[st.kind] || ''}</span>
       <span class="qtext"><b>${esc(title)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}${extra}</span>
@@ -1419,6 +1441,26 @@ async function importPlans(file) {
   toast(T('planImported', { n: added.length }));
 }
 
+// Taslaktan adım oluştur (ekleme ve düzenleme ortak); eksik/yanlış alan varsa uyarıp null döner.
+function buildStep(d) {
+  const tk = targetKind(d.kind, d.source);
+  let target = String(d.target || '').trim();
+  if (tk === 'handle') target = cleanHandle(target);
+  if (tk && !target) { toast(T('qNeedTarget'), 'bad'); $('[data-q="target"]').focus(); return null; }
+  if (tk === 'url' && d.kind === 'follow' && !/\/status(es)?\/\d+/.test(target)) { toast(T('needTweetUrl'), 'bad'); return null; }
+  if (tk === 'url' && d.kind === 'igfollow' && !/instagram\.com\/(?:[\w.]+\/)?(p|reel|reels|tv)\/[\w-]+/.test(target)) { toast(T('igNeedPostUrl'), 'bad'); return null; }
+  const step = { kind: d.kind };
+  if (d.kind === 'wait') step.minutes = Math.max(0.5, Number(String(d.minutes).replace(',', '.')) || 1);
+  else if (d.kind === 'igscan') { /* parametresiz adım */ }
+  else {
+    step.count = Math.max(1, Math.round(Number(d.count) || 1));
+    if (['follow', 'like', 'igfollow', 'igunfollow'].includes(d.kind)) step.source = d.source;
+    if (d.kind === 'clean') step.mode = d.mode;
+    if (tk) step.target = target;
+  }
+  return step;
+}
+
 // Plan eylemleri; aşağıda ACTIONS'a eklenir.
 const ACTIONS_EXTRA = {};
 Object.assign(ACTIONS_EXTRA, {
@@ -1426,6 +1468,7 @@ Object.assign(ACTIONS_EXTRA, {
     if (!planById(el.dataset.id)) return;
     S.plans.activeId = el.dataset.id;
     savePlans();
+    qSyncForm();
     renderDynamic();
     const chip = $('.pchip[aria-selected="true"]');
     if (chip) chip.scrollIntoView({ block: 'nearest', inline: 'nearest' });
@@ -1536,27 +1579,58 @@ Object.assign(ACTIONS_EXTRA, {
   async 'q-add'() {
     const p = curPlan();
     if (!p) return;
-    const d = S.qDraft;
-    const tk = targetKind(d.kind, d.source);
-    let target = String(d.target || '').trim();
-    if (tk === 'handle') target = cleanHandle(target);
-    if (tk && !target) { toast(T('qNeedTarget'), 'bad'); $('[data-q="target"]').focus(); return; }
-    if (tk === 'url' && d.kind === 'follow' && !/\/status(es)?\/\d+/.test(target)) { toast(T('needTweetUrl'), 'bad'); return; }
-    if (tk === 'url' && d.kind === 'igfollow' && !/instagram\.com\/(?:[\w.]+\/)?(p|reel|reels|tv)\/[\w-]+/.test(target)) { toast(T('igNeedPostUrl'), 'bad'); return; }
-    const step = { id: qId(), kind: d.kind };
-    if (d.kind === 'wait') step.minutes = Math.max(0.5, Number(d.minutes) || 1);
-    else if (d.kind === 'igscan') { /* parametresiz adım */ }
-    else {
-      step.count = Math.max(1, Math.round(Number(d.count) || 1));
-      if (['follow', 'like', 'igfollow', 'igunfollow'].includes(d.kind)) step.source = d.source;
-      if (d.kind === 'clean') step.mode = d.mode;
-      if (tk) step.target = target;
-    }
+    const step = buildStep(S.qDraft);
+    if (!step) return;
+    step.id = qId();
     p.steps = [...p.steps, step];
     S.qDraft.target = '';
     await savePlans(p);
     qSyncForm();
     toast(T('qAdded', { n: 1 }));
+  },
+
+  'q-edit'(el) {
+    const p = curPlan();
+    if (!p) return;
+    const i = Number(el.dataset.i);
+    const st = p.steps[i];
+    if (!st) return;
+    if (planLocked(p) && i <= S.queueRun.index) { toast(T('qEditPast'), 'bad'); return; }
+    if (S.qEdit === st.id) { ACTIONS_EXTRA['q-cancel'](); return; } // ikinci tık: düzenlemeyi kapat
+    if (!S.qEdit) S.qDraftBackup = { ...S.qDraft };
+    S.qEdit = st.id;
+    const d = S.qDraft;
+    S.qDraft = { ...d, kind: st.kind, source: st.source || d.source, mode: st.mode || d.mode, target: st.target || '', count: st.count || d.count, minutes: st.minutes || d.minutes };
+    qSyncForm();
+    renderDynamic(['qsteps']);
+    const card = $('.qadd');
+    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const wrap = ['target', 'count', 'minutes'].map((k) => $(`[data-qw="${k}"]`)).find((w) => w && !w.hidden);
+    const input = wrap && $('input', wrap);
+    if (input) { input.focus({ preventScroll: true }); input.select(); }
+  },
+
+  async 'q-save'() {
+    const p = curPlan();
+    if (!p || !S.qEdit) return;
+    const i = p.steps.findIndex((st) => st.id === S.qEdit);
+    if (i < 0) { endEdit(); qSyncForm(); return; }
+    if (planLocked(p) && i <= S.queueRun.index) { toast(T('qEditPast'), 'bad'); return; }
+    const step = buildStep(S.qDraft);
+    if (!step) return;
+    step.id = S.qEdit;
+    p.steps = p.steps.map((st, k) => (k === i ? step : st));
+    endEdit();
+    await savePlans(p);
+    qSyncForm();
+    renderDynamic(['qsteps', 'phead', 'pstate']);
+    toast(T('qUpdated'));
+  },
+
+  'q-cancel'() {
+    endEdit();
+    qSyncForm();
+    renderDynamic(['qsteps']);
   },
 
   async 'q-bulk'() {
@@ -1599,6 +1673,7 @@ Object.assign(ACTIONS_EXTRA, {
     if (!p || planLocked(p)) return;
     p.steps = p.steps.filter((_, i) => i !== Number(el.dataset.i));
     await savePlans(p);
+    qSyncForm();
   },
 
   async 'q-clear'() {
@@ -1608,6 +1683,7 @@ Object.assign(ACTIONS_EXTRA, {
     if (!ok) return;
     p.steps = [];
     await savePlans(p);
+    qSyncForm();
   },
 
   async 'q-start'(el) {

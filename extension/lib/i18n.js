@@ -168,7 +168,7 @@
       qStatusRetry: "Başka bir X görevi çalışıyor; bir dakika sonra yeniden denenecek.",
       qLast: "Son çalıştırma: {st} · {t}",
       qCycle: "Tur {n}",
-      qLocked: "Plan çalışırken adımlar taşınamaz ya da silinemez; sona yeni adım eklenebilir.",
+      qLocked: "Plan çalışırken adımlar taşınamaz ya da silinemez; sıradaki adımlar düzenlenebilir, sona yeni adım eklenebilir.",
       qMoveUp: "Yukarı taşı",
       qMoveDown: "Aşağı taşı",
       qDelete: "Adımı sil",
@@ -427,7 +427,11 @@
       "log.planChain": "\"{from}\" bitti; \"{name}\" planına geçiliyor.",
       "log.planBusySkip": "\"{name}\" planının zamanı geldi ama \"{cur}\" çalışıyor; bu başlatma atlandı.",
       "log.planScheduleFail": "\"{name}\" zamanında başlatılamadı ({e}).",
-      "log.planMissing": "\"{name}\" planı bulunamadı; durduruldu."
+      "log.planMissing": "\"{name}\" planı bulunamadı; durduruldu.",
+      qEdit: "Adımı düzenle",
+      qEditTitle: "Adımı düzenle · {n}. adım",
+      qUpdated: "Adım güncellendi",
+      qEditPast: "Bu adım çalıştı ya da şu an çalışıyor; yalnızca sıradaki adımlar düzenlenebilir."
     },
 
     en: {
@@ -590,7 +594,7 @@
       qStatusRetry: "Another X task is running; retrying in a minute.",
       qLast: "Last run: {st} · {t}",
       qCycle: "Round {n}",
-      qLocked: "Steps can't be moved or deleted while the plan runs; you can still add steps at the end.",
+      qLocked: "Steps can't be moved or deleted while the plan runs; upcoming steps can still be edited and new ones added at the end.",
       qMoveUp: "Move up",
       qMoveDown: "Move down",
       qDelete: "Delete step",
@@ -849,7 +853,11 @@
       "log.planChain": "\"{from}\" finished; moving on to \"{name}\".",
       "log.planBusySkip": "Plan \"{name}\" was due, but \"{cur}\" is running; this start was skipped.",
       "log.planScheduleFail": "Plan \"{name}\" couldn't start on schedule ({e}).",
-      "log.planMissing": "Plan \"{name}\" not found; stopped."
+      "log.planMissing": "Plan \"{name}\" not found; stopped.",
+      qEdit: "Edit step",
+      qEditTitle: "Edit step {n}",
+      qUpdated: "Step updated",
+      qEditPast: "This step has already run or is running; only upcoming steps can be edited."
     },
 
     de: {
@@ -1012,7 +1020,7 @@
       qStatusRetry: "Eine andere X-Aufgabe läuft; neuer Versuch in einer Minute.",
       qLast: "Letzter Lauf: {st} · {t}",
       qCycle: "Runde {n}",
-      qLocked: "Während der Plan läuft, lassen sich Schritte nicht verschieben oder löschen; am Ende können weitere hinzugefügt werden.",
+      qLocked: "Während der Plan läuft, lassen sich Schritte nicht verschieben oder löschen; kommende Schritte kannst du bearbeiten und am Ende neue hinzufügen.",
       qMoveUp: "Nach oben",
       qMoveDown: "Nach unten",
       qDelete: "Schritt löschen",
@@ -1271,7 +1279,11 @@
       "log.planChain": "„{from}“ beendet; weiter mit „{name}“.",
       "log.planBusySkip": "Plan „{name}“ war fällig, aber „{cur}“ läuft; dieser Start wurde übersprungen.",
       "log.planScheduleFail": "Plan „{name}“ konnte nicht planmäßig starten ({e}).",
-      "log.planMissing": "Plan „{name}“ nicht gefunden; gestoppt."
+      "log.planMissing": "Plan „{name}“ nicht gefunden; gestoppt.",
+      qEdit: "Schritt bearbeiten",
+      qEditTitle: "Schritt {n} bearbeiten",
+      qUpdated: "Schritt aktualisiert",
+      qEditPast: "Dieser Schritt lief bereits oder läuft gerade; nur kommende Schritte lassen sich bearbeiten."
     },
 
     es: {
@@ -1434,7 +1446,7 @@
       qStatusRetry: "Hay otra tarea de X en curso; se reintentará en un minuto.",
       qLast: "Última ejecución: {st} · {t}",
       qCycle: "Vuelta {n}",
-      qLocked: "Con el plan en marcha no se pueden mover ni borrar pasos; sí puedes añadir pasos al final.",
+      qLocked: "Con el plan en marcha no se pueden mover ni borrar pasos; sí puedes editar los siguientes y añadir pasos al final.",
       qMoveUp: "Subir",
       qMoveDown: "Bajar",
       qDelete: "Borrar paso",
@@ -1693,7 +1705,11 @@
       "log.planChain": "«{from}» terminó; pasando a «{name}».",
       "log.planBusySkip": "Tocaba el plan «{name}», pero «{cur}» está en marcha; se omitió este inicio.",
       "log.planScheduleFail": "El plan «{name}» no pudo iniciarse a su hora ({e}).",
-      "log.planMissing": "No se encontró el plan «{name}»; detenido."
+      "log.planMissing": "No se encontró el plan «{name}»; detenido.",
+      qEdit: "Editar paso",
+      qEditTitle: "Editar paso {n}",
+      qUpdated: "Paso actualizado",
+      qEditPast: "Este paso ya se ejecutó o se está ejecutando; solo se pueden editar los siguientes."
     },
 
     fr: {
@@ -1856,7 +1872,7 @@
       qStatusRetry: "Une autre tâche X est en cours ; nouvel essai dans une minute.",
       qLast: "Dernière exécution : {st} · {t}",
       qCycle: "Tour {n}",
-      qLocked: "Pendant l'exécution du plan, les étapes ne peuvent être ni déplacées ni supprimées ; tu peux encore en ajouter à la fin.",
+      qLocked: "Pendant l'exécution du plan, les étapes ne peuvent être ni déplacées ni supprimées ; tu peux modifier les suivantes et en ajouter à la fin.",
       qMoveUp: "Monter",
       qMoveDown: "Descendre",
       qDelete: "Supprimer l'étape",
@@ -2115,7 +2131,11 @@
       "log.planChain": "« {from} » terminé ; passage à « {name} ».",
       "log.planBusySkip": "Le plan « {name} » devait démarrer, mais « {cur} » est en cours ; ce démarrage a été ignoré.",
       "log.planScheduleFail": "Le plan « {name} » n'a pas pu démarrer à l'heure prévue ({e}).",
-      "log.planMissing": "Plan « {name} » introuvable ; arrêté."
+      "log.planMissing": "Plan « {name} » introuvable ; arrêté.",
+      qEdit: "Modifier l'étape",
+      qEditTitle: "Modifier l'étape {n}",
+      qUpdated: "Étape mise à jour",
+      qEditPast: "Cette étape a déjà tourné ou est en cours ; seules les étapes suivantes sont modifiables."
     },
 
     it: {
@@ -2278,7 +2298,7 @@
       qStatusRetry: "C'è un'altra attività di X in corso; nuovo tentativo tra un minuto.",
       qLast: "Ultima esecuzione: {st} · {t}",
       qCycle: "Giro {n}",
-      qLocked: "Con il piano in corso i passaggi non si possono spostare né eliminare; puoi comunque aggiungerne alla fine.",
+      qLocked: "Con il piano in corso i passaggi non si possono spostare né eliminare; puoi modificare i successivi e aggiungerne alla fine.",
       qMoveUp: "Sposta su",
       qMoveDown: "Sposta giù",
       qDelete: "Elimina passaggio",
@@ -2537,7 +2557,11 @@
       "log.planChain": "«{from}» finito; si passa a «{name}».",
       "log.planBusySkip": "Era l'ora del piano «{name}», ma «{cur}» è in corso; questo avvio è stato saltato.",
       "log.planScheduleFail": "Impossibile avviare il piano «{name}» all'ora prevista ({e}).",
-      "log.planMissing": "Piano «{name}» non trovato; interrotto."
+      "log.planMissing": "Piano «{name}» non trovato; interrotto.",
+      qEdit: "Modifica passaggio",
+      qEditTitle: "Modifica passaggio {n}",
+      qUpdated: "Passaggio aggiornato",
+      qEditPast: "Questo passaggio è già stato eseguito o è in corso; puoi modificare solo i successivi."
     }
   };
 

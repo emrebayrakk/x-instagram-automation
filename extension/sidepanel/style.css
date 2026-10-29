@@ -1,40 +1,50 @@
 /* X Otomasyon — yan panel.
-   Dil: bir "tempo" konsolu. Ritim (işlemler arası bekleme) güvenliğin kendisi olduğu için
-   sayılar ve süreler eşit aralıklı rakamlarla, birer ölçü aleti okuması gibi gösterilir.
-   Kehribar yalnızca zamanlama için, yeşil yalnızca "çalışıyor" için kullanılır. */
+   Dil: aurora üzerinde cam katmanlarda bir "tempo" konsolu. Ritim (işlemler arası bekleme) güvenliğin
+   kendisi olduğu için sayılar ve süreler eşit aralıklı rakamlarla, ölçü aleti okuması gibi gösterilir.
+   Kehribar zamanlama, yeşil "çalışıyor / çalıştır", kırmızı durdurma içindir. */
 
 :root {
   color-scheme: light;
-  --bg: #f2f3f7;
+  --bg: #eef1f6;
+  --aurora:
+    radial-gradient(440px 340px at 0% 0%, rgba(34, 197, 94, .3), transparent 64%),
+    radial-gradient(420px 420px at 100% 32%, rgba(139, 92, 246, .26), transparent 64%),
+    radial-gradient(520px 380px at 24% 100%, rgba(245, 158, 11, .22), transparent 64%);
   --surface: #ffffff;
-  --raised: #f6f7fa;
-  --line: #e2e5ec;
-  --line-strong: #cdd2dc;
-  --text: #141722;
-  --muted: #5c6378;
-  --faint: #959bb0;
-  --pace: #b86e00;
-  --pace-soft: #fbeed8;
-  --go: #0b8f62;
-  --go-soft: #d8f2e7;
-  --stop: #cf3434;
-  --stop-soft: #fbe4e4;
-  --ig: #c42b6a;
-  --ig-soft: #fbe3ed;
-  --blue: #2a6fe8;
-  --focus: #2f6bde;
-  --shadow: 0 1px 2px rgba(20, 23, 34, .04), 0 4px 14px -4px rgba(20, 23, 34, .08);
-  --shadow-lift: 0 2px 4px rgba(20, 23, 34, .04), 0 12px 32px -8px rgba(20, 23, 34, .16);
+  --glass: rgba(255, 255, 255, .56);
+  --glass-strong: rgba(255, 255, 255, .86);
+  --glass-border: rgba(15, 23, 42, .08);
+  --glass-hi: inset 0 1px 0 rgba(255, 255, 255, .85);
+  --raised: rgba(15, 23, 42, .04);
+  --line: rgba(15, 23, 42, .09);
+  --line-strong: rgba(15, 23, 42, .17);
+  --text: #0f172a;
+  --muted: #475569;
+  --faint: #8391a5;
+  --pace: #b45309;
+  --pace-soft: rgba(245, 158, 11, .15);
+  --go: #15803d;
+  --go-soft: rgba(34, 197, 94, .14);
+  --go-btn: linear-gradient(180deg, #3ddc84, #16a34a);
+  --on-go: #04210e;
+  --stop: #dc2626;
+  --stop-soft: rgba(239, 68, 68, .12);
+  --ig: #db2777;
+  --ig-soft: rgba(236, 72, 153, .12);
+  --blue: #2563eb;
+  --focus: #6366f1;
+  --shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 10px 28px -12px rgba(15, 23, 42, .2);
+  --shadow-lift: 0 2px 4px rgba(15, 23, 42, .05), 0 16px 40px -12px rgba(15, 23, 42, .26);
   --c-amber: #c27400;
-  --c-green: #0d9466;
-  --c-blue: #2f6fe4;
-  --c-pink: #d33b76;
-  --c-violet: #7a52e0;
-  --c-teal: #0b8fa0;
-  --on: var(--surface);
-  --r: 13px;
-  --r-lg: 16px;
-  --r-sm: 9px;
+  --c-green: #15803d;
+  --c-blue: #2563eb;
+  --c-pink: #db2777;
+  --c-violet: #7c3aed;
+  --c-teal: #0e8a9a;
+  --on: #ffffff;
+  --r: 14px;
+  --r-lg: 18px;
+  --r-sm: 10px;
   --font: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
   --font-display: "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --mono: "Cascadia Mono", "Cascadia Code", "SF Mono", "JetBrains Mono", ui-monospace, Consolas, monospace;
@@ -43,64 +53,84 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --bg: #0d0f15;
-    --surface: #171a23;
-    --raised: #1e222d;
-    --line: #262b38;
-    --line-strong: #343a4a;
-    --text: #eceef4;
-    --muted: #949aaf;
-    --faint: #636a82;
-    --pace: #f2b544;
-    --pace-soft: rgba(242, 181, 68, .13);
-    --go: #3fd69a;
-    --go-soft: rgba(63, 214, 154, .12);
-    --stop: #ff6b6b;
-    --stop-soft: rgba(255, 107, 107, .12);
-    --ig: #f15b93;
-    --ig-soft: rgba(241, 91, 147, .13);
-    --blue: #6aa1ff;
-    --focus: #7aa5ff;
-    --shadow: none;
-    --shadow-lift: 0 12px 32px -8px rgba(0, 0, 0, .5);
-    --c-amber: #f2b544;
-    --c-green: #3fd69a;
-    --c-blue: #6aa1ff;
-    --c-pink: #f2689c;
-    --c-violet: #a98bff;
-    --c-teal: #3cc8d8;
-    --on: #2c3140;
+    --bg: #070b14;
+    --aurora:
+      radial-gradient(440px 360px at 0% 0%, rgba(34, 197, 94, .3), transparent 64%),
+      radial-gradient(440px 440px at 100% 34%, rgba(139, 92, 246, .32), transparent 64%),
+      radial-gradient(520px 400px at 22% 100%, rgba(245, 158, 11, .2), transparent 64%);
+    --surface: #121a2b;
+    --glass: rgba(20, 28, 46, .46);
+    --glass-strong: rgba(18, 26, 43, .86);
+    --glass-border: rgba(255, 255, 255, .08);
+    --glass-hi: inset 0 1px 0 rgba(255, 255, 255, .06);
+    --raised: rgba(255, 255, 255, .045);
+    --line: rgba(255, 255, 255, .08);
+    --line-strong: rgba(255, 255, 255, .15);
+    --text: #f1f5f9;
+    --muted: #94a3b8;
+    --faint: #64748b;
+    --pace: #fbbf24;
+    --pace-soft: rgba(251, 191, 36, .14);
+    --go: #22c55e;
+    --go-soft: rgba(34, 197, 94, .14);
+    --go-btn: linear-gradient(180deg, #3ddc84, #16a34a);
+    --on-go: #04210e;
+    --stop: #f87171;
+    --stop-soft: rgba(248, 113, 113, .13);
+    --ig: #f472b6;
+    --ig-soft: rgba(244, 114, 182, .13);
+    --blue: #60a5fa;
+    --focus: #a5b4fc;
+    --shadow: 0 12px 32px -14px rgba(0, 0, 0, .7);
+    --shadow-lift: 0 16px 44px -12px rgba(0, 0, 0, .75);
+    --c-amber: #fbbf24;
+    --c-green: #22c55e;
+    --c-blue: #60a5fa;
+    --c-pink: #f472b6;
+    --c-violet: #a78bfa;
+    --c-teal: #2dd4bf;
+    --on: rgba(255, 255, 255, .11);
   }
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #0d0f15;
-  --surface: #171a23;
-  --raised: #1e222d;
-  --line: #262b38;
-  --line-strong: #343a4a;
-  --text: #eceef4;
-  --muted: #949aaf;
-  --faint: #636a82;
-  --pace: #f2b544;
-  --pace-soft: rgba(242, 181, 68, .13);
-  --go: #3fd69a;
-  --go-soft: rgba(63, 214, 154, .12);
-  --stop: #ff6b6b;
-  --stop-soft: rgba(255, 107, 107, .12);
-  --ig: #f15b93;
-  --ig-soft: rgba(241, 91, 147, .13);
-  --blue: #6aa1ff;
-  --focus: #7aa5ff;
-  --shadow: none;
-  --shadow-lift: 0 12px 32px -8px rgba(0, 0, 0, .5);
-  --c-amber: #f2b544;
-  --c-green: #3fd69a;
-  --c-blue: #6aa1ff;
-  --c-pink: #f2689c;
-  --c-violet: #a98bff;
-  --c-teal: #3cc8d8;
-  --on: #2c3140;
+  --bg: #070b14;
+  --aurora:
+    radial-gradient(440px 360px at 0% 0%, rgba(34, 197, 94, .3), transparent 64%),
+    radial-gradient(440px 440px at 100% 34%, rgba(139, 92, 246, .32), transparent 64%),
+    radial-gradient(520px 400px at 22% 100%, rgba(245, 158, 11, .2), transparent 64%);
+  --surface: #121a2b;
+  --glass: rgba(20, 28, 46, .46);
+  --glass-strong: rgba(18, 26, 43, .86);
+  --glass-border: rgba(255, 255, 255, .08);
+  --glass-hi: inset 0 1px 0 rgba(255, 255, 255, .06);
+  --raised: rgba(255, 255, 255, .045);
+  --line: rgba(255, 255, 255, .08);
+  --line-strong: rgba(255, 255, 255, .15);
+  --text: #f1f5f9;
+  --muted: #94a3b8;
+  --faint: #64748b;
+  --pace: #fbbf24;
+  --pace-soft: rgba(251, 191, 36, .14);
+  --go: #22c55e;
+  --go-soft: rgba(34, 197, 94, .14);
+  --go-btn: linear-gradient(180deg, #3ddc84, #16a34a);
+  --on-go: #04210e;
+  --stop: #f87171;
+  --stop-soft: rgba(248, 113, 113, .13);
+  --ig: #f472b6;
+  --ig-soft: rgba(244, 114, 182, .13);
+  --blue: #60a5fa;
+  --focus: #a5b4fc;
+  --shadow: 0 12px 32px -14px rgba(0, 0, 0, .7);
+  --shadow-lift: 0 16px 44px -12px rgba(0, 0, 0, .75);
+  --c-amber: #fbbf24;
+  --c-green: #22c55e;
+  --c-blue: #60a5fa;
+  --c-pink: #f472b6;
+  --c-violet: #a78bfa;
+  --c-teal: #2dd4bf;
+  --on: rgba(255, 255, 255, .11);
 }
 
 * { box-sizing: border-box; }
@@ -108,7 +138,9 @@ html { background: var(--bg); }
 body {
   margin: 0;
   min-width: 300px;
-  background: var(--bg);
+  min-height: 100vh;
+  background: var(--aurora), var(--bg);
+  background-attachment: fixed;
   color: var(--text);
   font: 13px/1.45 var(--font);
   -webkit-font-smoothing: antialiased;
@@ -770,7 +802,18 @@ input:focus, select:focus, textarea:focus {
 .ktile.ig[aria-pressed="true"] { border-color: var(--ig); box-shadow: 0 0 0 1px var(--ig) inset; }
 .ktile.wait[aria-pressed="true"] { border-color: var(--pace); box-shadow: 0 0 0 1px var(--pace) inset; }
 .ktile[aria-pressed="true"] .ktile-icon { background: var(--raised); }
-.qadd > .btn { align-self: stretch; }
+.qadd-btns { display: flex; gap: 8px; }
+.qadd-btns .btn { flex: 1; }
+.qadd-btns .btn.ghost { flex: 0 0 auto; }
+.qadd-btns .btn svg { width: 13px; height: 13px; }
+.qadd { transition: border-color .2s ease, box-shadow .2s ease; }
+.qadd.editing { border-color: color-mix(in srgb, var(--pace) 55%, var(--line)); box-shadow: 0 0 0 3px var(--pace-soft), var(--shadow); }
+.qadd.editing > .eyebrow { color: var(--pace); }
+.qstep.editing { background: var(--pace-soft); }
+.qstep.editing .qnum { border-color: var(--pace); color: var(--pace); }
+.qbtns .mini svg { width: 12px; height: 12px; margin: auto; }
+.qbtns .mini[aria-pressed="true"] { border-color: var(--pace); color: var(--pace); }
+.qstep.editing .qbtns, .qbtns:has([data-action="q-edit"]:only-child) { opacity: 1; }
 
 /* bölümlü seçim */
 .segc { display: flex; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 11px; background: var(--raised); }
@@ -972,3 +1015,82 @@ input:focus, select:focus, textarea:focus {
 
 /* Instagram etiketleri */
 .tag.app { background: var(--pace-soft); color: var(--pace); }
+
+
+/* ---------------------------------------------------------------- cam katman
+   Kartlar yarı saydam ve bulanık: arkadaki aurora içeriği bozmadan yüzeye renk verir.
+   Opak --surface yalnızca çizgi maskeleyen küçük öğelerde (adım numarası, anahtar düğmesi) kalır. */
+
+.card, .module, .phero, .acct-list, .qsteps, .log, .ulist, .pempty, .pchip, .act.ready, .act.card,
+.view[data-view="x"] > [data-slot="acct:x"] .acct, .view[data-view="ig"] > [data-slot="acct:ig"] .acct {
+  background-color: var(--glass);
+  -webkit-backdrop-filter: blur(18px) saturate(1.5);
+  backdrop-filter: blur(18px) saturate(1.5);
+  border-color: var(--glass-border);
+  box-shadow: var(--glass-hi), var(--shadow);
+}
+.acct-list .acct { background: transparent; }
+.phero {
+  background:
+    radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--pc) 20%, transparent), transparent 62%),
+    var(--glass);
+}
+.pchip[aria-selected="true"] { background: color-mix(in srgb, var(--pc) 16%, var(--glass)); }
+.pchip.new { background: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.strip {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--pc) 18%, transparent), transparent 72%), var(--glass);
+  -webkit-backdrop-filter: blur(18px) saturate(1.5);
+  backdrop-filter: blur(18px) saturate(1.5);
+  box-shadow: var(--glass-hi), var(--shadow);
+}
+.chrome {
+  background: color-mix(in srgb, var(--bg) 52%, transparent);
+  -webkit-backdrop-filter: saturate(1.6) blur(20px);
+  backdrop-filter: saturate(1.6) blur(20px);
+  border-bottom-color: var(--glass-border);
+}
+.tabs { background: var(--raised); border-color: var(--glass-border); }
+.tab[aria-selected="true"] { box-shadow: var(--glass-hi), 0 1px 2px rgba(0, 0, 0, .08), 0 4px 12px -4px rgba(0, 0, 0, .18); }
+.dlg {
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  backdrop-filter: blur(24px) saturate(1.5);
+  border-color: var(--glass-border);
+}
+.dlg::backdrop { background: rgba(5, 8, 16, .45); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+.qsteps .qnum { background: var(--surface); }
+.toast { -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+
+/* ana düğme: yeşil (çalıştır, ekle, kaydet) */
+.btn.go {
+  background: var(--go-btn);
+  color: var(--on-go);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .28), 0 1px 2px rgba(0, 0, 0, .12), 0 8px 18px -8px rgba(22, 163, 74, .7);
+}
+.btn.go:not(:disabled):hover { filter: brightness(1.06) saturate(1.05); }
+.btn.go:disabled { background: var(--raised); color: var(--faint); box-shadow: none; opacity: 1; }
+.btn.ghost { background: var(--raised); border-color: var(--line-strong); }
+.btn.stop { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06); }
+.chip[aria-pressed="true"], .day[aria-pressed="true"] { background: var(--go); border-color: var(--go); color: var(--on-go); }
+.switch input:checked + i { background: var(--go-btn); }
+.ktile[aria-pressed="true"] { background: var(--glass-strong); }
+
+/* alanlar cam üzerinde */
+input[type="text"], input[type="number"], input[type="search"], input[type="time"], select, textarea {
+  background: var(--raised);
+  border-color: var(--line-strong);
+}
+input:focus, select:focus, textarea:focus { background: var(--glass-strong); }
+select option { background: var(--surface); color: var(--text); }
+
+/* görünüm açılışı: bölümler sırayla belirir */
+@keyframes enter { from { opacity: 0; transform: translateY(8px); } }
+.view > * { animation: enter .38s cubic-bezier(.2, .8, .2, 1) both; }
+.view > :nth-child(2) { animation-delay: .04s; }
+.view > :nth-child(3) { animation-delay: .08s; }
+.view > :nth-child(4) { animation-delay: .12s; }
+.view > :nth-child(5) { animation-delay: .16s; }
+.view > :nth-child(6) { animation-delay: .2s; }
+.view > :nth-child(n+7) { animation-delay: .24s; }
+.card, .module, .pchip, .ktile { transition: border-color .2s ease, box-shadow .2s ease, background-color .2s ease, transform .15s ease; }
+.module:hover, .card.active:hover { border-color: var(--line-strong); }

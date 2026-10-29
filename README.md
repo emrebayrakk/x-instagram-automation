@@ -96,6 +96,7 @@ Bir plan, sırayla çalışan adımlardan oluşur. İstediğin kadar plan kayded
 - **Birden çok plan:** her planın adı, rengi ve kendi adımları var. Planlar arasında üstteki çiplerle geçilir; aynı anda tek plan çalışır.
 - **Plan bitince:** dur, baştan başla ya da **başka bir plana geç** (A → B → A gibi zincirler kurulabilir).
 - **Zamanlama:** seçilen günlerde belirli saatte kendiliğinden başlar (ör. hafta içi 09:00). O saatte başka plan çalışıyorsa başlatma atlanır ve kayda yazılır.
+- **Adımları düzenle:** her adımdaki ✎ ile bekleme süresini, takip kaynağını / hedef hesabı / kişi sayısını, beğeni sorgusunu ve sayısını sonradan değiştir. Plan çalışırken sıradaki adımlar da düzenlenebilir.
 - Çoğalt, yeniden adlandır, renk seç, sil; planı **JSON olarak dışa / içe aktar**.
 - Adım türleri: X'te takip et, beğen, takipten çık, temizle; Instagram'da takip et, tara, takipten çık (geri takip etmeyenlerden ya da eklentinin N gün önce takip ettiklerinden); bekle.
 - **Hızlı kurulum:** `a, b, c` + adet + bekleme yaz; adımlar otomatik oluşur.
@@ -107,7 +108,8 @@ Bir plan, sırayla çalışan adımlardan oluşur. İstediğin kadar plan kayded
 - **Canlı tempo şeridi:** bir plan ya da görev çalışırken başlığın altında; ne çalıştığı, sıradaki işleme geri sayım, tıklayınca ilgili bölüm.
 - Hesap durumu, bölmeli günlük göstergeler (tavana yaklaşınca kehribar, dolunca kırmızı).
 - **Tempo** çizgisi: son 10 dakikadaki işlemler ve bir sonraki işleme geri sayım.
-- Canlı işlem kaydı (filtrelenebilir, dışa aktarılabilir), açık/koyu tema, 6 dil.
+- Canlı işlem kaydı (filtrelenebilir, dışa aktarılabilir), 6 dil.
+- Aurora arka plan üzerinde cam (glassmorphism) görünüm; açık ve koyu tema.
 
 ### Kurulum (Chrome eklentisi)
 
@@ -219,6 +221,7 @@ A plan is a list of steps that run in order. Save as many plans as you like (e.g
 - **Multiple plans:** each plan has its own name, colour and steps. Switch between them with the chips at the top; one plan runs at a time.
 - **When a plan ends:** stop, start over, or **go on to another plan** (chains like A → B → A work).
 - **Schedule:** starts by itself at a set time on chosen days (e.g. weekdays at 09:00). If another plan is running then, the start is skipped and logged.
+- **Edit steps:** use ✎ on any step to change the wait time, follow source / target account / count, or the like query and count later. While a plan runs, upcoming steps can still be edited.
 - Duplicate, rename, pick a colour, delete; **export / import plans as JSON**.
 - Step types: on X follow, like, unfollow, clean up; on Instagram follow, scan, unfollow (from non-followers, or accounts the extension followed N days ago); wait.
 - **Quick setup:** enter `a, b, c` + count + wait; the steps are created for you.
@@ -230,7 +233,8 @@ A plan is a list of steps that run in order. Save as many plans as you like (e.g
 - **Live tempo strip:** under the header while a plan or task runs; shows what's running and a countdown to the next action, and opens the related section when clicked.
 - Account status and segmented daily gauges (amber near the cap, red when full).
 - **Tempo** line: actions in the last 10 minutes and a countdown to the next one.
-- Live activity log (filterable, exportable), light/dark theme, 6 languages.
+- Live activity log (filterable, exportable), 6 languages.
+- Glass (glassmorphism) look on an aurora background; light and dark themes.
 
 ### Install (Chrome extension)
 
